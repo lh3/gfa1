@@ -10,6 +10,8 @@
 #define gfa_arc_tail(a) ((a)->w)
 #define gfa_arc_len(a) ((uint32_t)(a)->v_lv)
 
+#define gfa_n_vtx(g) ((g)->n_seg << 1)
+
 typedef struct {
 	uint64_t v_lv;
 	uint32_t ov, w, ow, lw;
