@@ -112,7 +112,7 @@ int gfa_parse_L(gfa_t *g, char *s)
 {
 	int i, oriv, oriw;
 	char *p, *q, *segv = 0, *segw = 0;
-	uint32_t ov, ow;
+	int32_t ov = INT32_MAX, ow = INT32_MAX;
 	for (i = 0, p = q = s + 2;; ++p) {
 		if (*p == 0 || *p == '\t') {
 			int c = *p;
