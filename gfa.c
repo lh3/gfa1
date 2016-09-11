@@ -147,7 +147,6 @@ int gfa_parse_L(gfa_t *g, char *s)
 void gfa_arc_sort(gfa_t *g)
 {
 	radix_sort_arc(g->arc, g->arc + g->n_arc);
-	g->is_srt = 1;
 }
 
 uint64_t *gfa_arc_index_core(size_t max_seq, size_t n, const gfa_arc_t *a)
