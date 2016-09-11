@@ -21,9 +21,6 @@ int gfa_verbose = 2;
 #define gfa_arc_n(g, v) ((uint32_t)(g)->idx[(v)])
 #define gfa_arc_a(g, v) (&(g)->arc[(g)->idx[(v)]>>32])
 
-void gfa_arc_sort(gfa_t *g);
-void gfa_arc_index(gfa_t *g);
-
 gfa_t *gfa_init(void)
 {
 	gfa_t *g;
@@ -147,6 +144,29 @@ int gfa_parse_L(gfa_t *g, char *s)
 	return 0;
 }
 
+void gfa_arc_sort(gfa_t *g)
+{
+	radix_sort_arc(g->arc, g->arc + g->n_arc);
+	g->is_srt = 1;
+}
+
+uint64_t *gfa_arc_index_core(size_t max_seq, size_t n, const gfa_arc_t *a)
+{
+	size_t i, last;
+	uint64_t *idx;
+	idx = (uint64_t*)calloc(max_seq * 2, 8);
+	for (i = 1, last = 0; i <= n; ++i)
+		if (i == n || gfa_arc_head(&a[i-1]) != gfa_arc_head(&a[i]))
+			idx[gfa_arc_head(&a[i-1])] = (uint64_t)last<<32 | (i - last), last = i;
+	return idx;
+}
+
+void gfa_arc_index(gfa_t *g)
+{
+	if (g->idx) free(g->idx);
+	g->idx = gfa_arc_index_core(g->n_seg, g->n_arc, g->arc);
+}
+
 uint32_t gfa_fix_no_seg(gfa_t *g)
 {
 	uint32_t i, n_err = 0;
@@ -239,29 +259,6 @@ uint32_t gfa_fix_symm(gfa_t *g)
 		gfa_arc_index(g);
 	}
 	return n_err;
-}
-
-void gfa_arc_sort(gfa_t *g)
-{
-	radix_sort_arc(g->arc, g->arc + g->n_arc);
-	g->is_srt = 1;
-}
-
-uint64_t *gfa_arc_index_core(size_t max_seq, size_t n, const gfa_arc_t *a)
-{
-	size_t i, last;
-	uint64_t *idx;
-	idx = (uint64_t*)calloc(max_seq * 2, 8);
-	for (i = 1, last = 0; i <= n; ++i)
-		if (i == n || gfa_arc_head(&a[i-1]) != gfa_arc_head(&a[i]))
-			idx[gfa_arc_head(&a[i-1])] = (uint64_t)last<<32 | (i - last), last = i;
-	return idx;
-}
-
-void gfa_arc_index(gfa_t *g)
-{
-	if (g->idx) free(g->idx);
-	g->idx = gfa_arc_index_core(g->n_seg, g->n_arc, g->arc);
 }
 
 gfa_t *gfa_read(const char *fn)
