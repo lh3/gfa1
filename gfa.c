@@ -82,58 +82,68 @@ uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, uint32_t ov, uint32_t ow
 int gfa_parse_S(gfa_t *g, char *s)
 {
 	int i;
-	char *p, *q;
-	uint32_t sid;
+	char *p, *q, *seg = 0, *seq = 0;
+	uint32_t sid, len = 0;
 	for (i = 0, p = q = s + 2;; ++p) {
 		if (*p == 0 || *p == '\t') {
 			int c = *p;
 			*p = 0;
-			switch (i) {
-				case 0: sid = gfa_add_seg(g, q); break;
-				case 1:
-					if (!isdigit(*q)) return -2;
-					g->seg[sid].len = strtol(q, &q, 10);
-					break;
-				case 2: g->seg[sid].seq = q[0] == '*'? 0 : strdup(q); break;
+			if (i == 0) {
+				seg = q;
+			} else if (i == 1) {
+				if (!isdigit(*q)) return -2;
+				len = strtol(q, &q, 10);
+			} else if (i == 2) {
+				seq = q[0] == '*'? 0 : strdup(q);
 			}
 			++i, q = p + 1;
 			if (c == 0) break;
 		}
 	}
+	if (i >= 3) {
+		sid = gfa_add_seg(g, seg);
+		g->seg[sid].len = len;
+		g->seg[sid].seq = seq;
+	} else return -1;
 	return 0;
 }
 
 int gfa_parse_L(gfa_t *g, char *s)
 {
-	int i;
-	char *p, *q;
-	uint32_t v, w, ov, ow;
+	int i, oriv, oriw;
+	char *p, *q, *segv = 0, *segw = 0;
+	uint32_t ov, ow;
 	for (i = 0, p = q = s + 2;; ++p) {
 		if (*p == 0 || *p == '\t') {
 			int c = *p;
 			*p = 0;
-			switch (i) {
-				case 0: v = gfa_add_seg(g, q) << 1; break;
-				case 1:
-					if (*q != '+' && *q != '-') return -1;
-					v |= (*q != '+');
-					break;
-				case 2: w = gfa_add_seg(g, q) << 1; break;
-				case 3:
-					if (*q != '+' && *q != '-') return -1;
-					w |= (*q != '+');
-					break;
-				case 4:
-					if (!isdigit(*q)) return -2;
-					ov = strtol(q, &q, 10);
-					break;
-				case 5: ow = *q == '*'? INT32_MAX : strtol(q, &q, 10); break;
+			if (i == 0) {
+				segv = q;
+			} else if (i == 1) {
+				if (*q != '+' && *q != '-') return -2;
+				oriv = (*q != '+');
+			} else if (i == 2) {
+				segw = q;
+			} else if (i == 3) {
+				if (*q != '+' && *q != '-') return -2;
+				oriw = (*q != '+');
+			} else if (i == 4) {
+				if (!isdigit(*q)) return -2;
+				ov = strtol(q, &q, 10);
+			} else if (i == 5) {
+				if (!isdigit(*q) && *q != '*') return -2;
+				ow = *q == '*'? INT32_MAX : strtol(q, &q, 10);
 			}
 			++i, q = p + 1;
 			if (c == 0) break;
 		}
 	}
-	gfa_add_arc1(g, v, w, ov, ow, -1, 0);
+	if (i >= 6) {
+		uint32_t v, w;
+		v = gfa_add_seg(g, segv) << 1 | oriv;
+		w = gfa_add_seg(g, segw) << 1 | oriw;
+		gfa_add_arc1(g, v, w, ov, ow, -1, 0);
+	} else return -1;
 	return 0;
 }
 
