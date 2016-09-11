@@ -60,7 +60,7 @@ uint32_t gfa_add_seg(gfa_t *g, const char *name)
 	return kh_val(h, k);
 }
 
-uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, uint32_t ov, uint32_t ow, int64_t link_id, int comp)
+uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, int32_t ov, int32_t ow, int64_t link_id, int comp)
 {
 	gfa_arc_t *a;
 	if (g->m_arc == g->n_arc) {
@@ -175,7 +175,7 @@ uint32_t gfa_fix_no_seg(gfa_t *g)
 		if (s->len == 0) {
 			++n_err, s->del = 1;
 			if (gfa_verbose >= 2)
-				fprintf(stderr, "[W::%s] segment '%s' is used on an L-line but not defined on an S-line\n", __func__, s->name);
+				fprintf(stderr, "WARNING: segment '%s' is used on an L-line but not defined on an S-line\n", s->name);
 		}
 	}
 	return n_err;
@@ -211,16 +211,11 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 				gfa_arc_t *aw = gfa_arc_a(g, w);
 				for (j = 0, c = 0; j < nw; ++j)
 					if (!aw[j].del && aw[j].w == (v^1)) ++c, jv = j;
-				if (c != 1) { // no complement edge or multiple edges
+				if (c != 1 || (aw[jv].ow != INT32_MAX && aw[jv].ow != av[i].ov)) { // no complement edge or multiple edges
 					if (gfa_verbose >= 2)
-						fprintf(stderr, "[W::%s] can't infer complement overlap length for %s%c -> %s%c\n",
-								__func__, g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[w&1]);
+						fprintf(stderr, "WARNING: can't infer complement overlap length for %s%c -> %s%c\n",
+								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[w&1]);
 					++n_err;
-					av[i].del = 1;
-				} else if (aw[jv].ow != INT32_MAX && aw[jv].ow != av[i].ov) {
-					if (gfa_verbose >= 2)
-						fprintf(stderr, "[W::%s] inconsistent overlap length between %s%c -> %s%c and its complement\n",
-								__func__, g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[w&1]);
 					av[i].del = 1;
 				} else av[i].ow = aw[jv].ov;
 			}

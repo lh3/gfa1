@@ -27,7 +27,7 @@ typedef struct {
 
 #define gfa_arc_head(a) ((uint32_t)((a)->v_lv>>32))
 #define gfa_arc_tail(a) ((a)->w)
-#define gfa_arc_len(a) ((uint32_t)(a)->v_lv)
+#define gfa_arc_len(a) ((uint32_t)(a)->v_lv) // this is different from the original string graph!
 
 typedef struct {
 	uint32_t max, cnt;
