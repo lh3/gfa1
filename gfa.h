@@ -15,7 +15,7 @@
 typedef struct {
 	uint64_t v_lv;
 	uint32_t ov, w, ow, lw;
-	uint64_t link_id:63, del:1;
+	uint64_t link_id:62, del:1, comp:1;
 } gfa_arc_t;
 
 typedef struct {

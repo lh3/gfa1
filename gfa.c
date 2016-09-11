@@ -20,9 +20,8 @@ int gfa_verbose = 2;
 #define gfa_arc_n(g, v) ((uint32_t)(g)->idx[(v)])
 #define gfa_arc_a(g, v) (&(g)->arc[(g)->idx[(v)]>>32])
 
-/*****************
- * Graph parsing *
- *****************/
+void gfa_arc_sort(gfa_t *g);
+void gfa_arc_index(gfa_t *g);
 
 gfa_t *gfa_init(void)
 {
@@ -63,7 +62,7 @@ uint32_t gfa_add_seg(gfa_t *g, const char *name)
 	return kh_val(h, k);
 }
 
-uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, uint32_t ov, uint32_t ow, int64_t link_id)
+uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, uint32_t ov, uint32_t ow, int64_t link_id, int comp)
 {
 	gfa_arc_t *a;
 	if (g->m_arc == g->n_arc) {
@@ -74,6 +73,8 @@ uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, uint32_t ov, uint32_t ow
 	a->v_lv = (uint64_t)v << 32;
 	a->w = w, a->ov = ov, a->ow = ow, a->lw = 0;
 	a->link_id = link_id >= 0? link_id : g->n_arc - 1;
+	a->del = 0;
+	a->comp = comp;
 	return a->link_id;
 }
 
@@ -118,7 +119,7 @@ void gfa_parse_L(gfa_t *g, char *s)
 			if (c == 0) break;
 		}
 	}
-	gfa_add_arc1(g, v, w, ov, ow, -1);
+	gfa_add_arc1(g, v, w, ov, ow, -1, 0);
 }
 
 uint32_t gfa_fix_no_seg(gfa_t *g)
@@ -176,12 +177,41 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 						fprintf(stderr, "[W::%s] inconsistent overlap length between %s%c -> %s%c and its complement\n",
 								__func__, g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[w&1]);
 					av[i].del = 1;
-				} else {
-					av[i].ow = aw[jv].ov;
-					av[i].lw = gfa_arc_len(&aw[jv]);
-				}
+				} else av[i].ow = aw[jv].ov;
 			}
 		}
+	}
+	return n_err;
+}
+
+uint32_t gfa_fix_symm(gfa_t *g)
+{
+	uint32_t n_err = 0, v, n_vtx = gfa_n_vtx(g);
+	int i;
+	for (v = 0; v < n_vtx; ++v) {
+		int nv = gfa_arc_n(g, v);
+		gfa_arc_t *av = gfa_arc_a(g, v);
+		for (i = 0; i < nv; ++i) {
+			int j, nw;
+			gfa_arc_t *aw, *avi = &av[i];
+			if (avi->del || avi->comp) continue;
+			nw = gfa_arc_n(g, avi->w^1);
+			aw = gfa_arc_a(g, avi->w^1);
+			for (j = 0; j < nw; ++j) {
+				gfa_arc_t *awj = &aw[j];
+				if (awj->del || awj->comp) continue;
+				if (awj->w == (v^1) && awj->ov == avi->ow && awj->ow == avi->ov) { // complement found
+					awj->comp = 1;
+					awj->link_id = avi->link_id;
+					break;
+				}
+			}
+			if (j == nw) gfa_add_arc1(g, avi->w^1, v^1, avi->ow, avi->ov, avi->link_id, 1);
+		}
+	}
+	if (n_vtx < gfa_n_vtx(g)) {
+		gfa_arc_sort(g);
+		gfa_arc_index(g);
 	}
 	return n_err;
 }
@@ -227,43 +257,16 @@ gfa_t *gfa_read(const char *fn)
 		else if (s.s[0] == 'L') gfa_parse_L(g, s.s);
 	}
 	gfa_fix_no_seg(g);
-	gfa_fix_arc_len(g);
 	gfa_arc_sort(g);
 	gfa_arc_index(g);
 	gfa_fix_semi_arc(g);
+	gfa_fix_symm(g);
+	gfa_fix_arc_len(g);
 	ks_destroy(ks);
 	gzclose(fp);
 	return g;
 }
 
-/*
-void gfa_fix_symm_by_add(gfa_t *g)
-{
-	uint64_t n_arc = 0, m_arc = 0;
-	uint32_t v, n_vtx = gfa_n_vtx(g);
-	gfa_arc_t *arc = 0;
-	if (!g->is_srt) gfa_arc_sort(g);
-	gfa_arc_index(g);
-	for (v = 0; v < n_vtx; ++v) {
-		int nv;
-		gfa_arc_t *av;
-		if (g->seg[v>>1].del) continue;
-		nv = gfa_arc_n(g, v);
-		av = gfa_arc_v(g, v);
-		for (i = 0; i < nv; ++i) {
-			gfa_arc_t *v2w = &av[i];
-			uint32_t w = gfa_arc_tail(v2w);
-			int nw = gfa_arc_n(g, w);
-			gfa_arc_t *aw = gfa_arc_n(g, w);
-			for (j = 0; j < nw; ++j) {
-				gfa_arc_t *w2v;
-				if (gfa_arc_tail(&aw[j]) != v) continue;
-				w2v = &aw[j];
-			}
-		}
-	}
-}
-*/
 void gfa_print(const gfa_t *g, FILE *fp)
 {
 	uint32_t i;
@@ -278,7 +281,7 @@ void gfa_print(const gfa_t *g, FILE *fp)
 	}
 	for (k = 0; k < g->n_arc; ++k) {
 		const gfa_arc_t *a = &g->arc[k];
-		if (a->del) continue;
+		if (a->del || a->comp) continue;
 		fprintf(fp, "L\t%s\t%c\t%s\t%c\t%d\t%d\tL1:i:%d\tL2:i:%d\n", g->seg[a->v_lv>>33].name, "+-"[a->v_lv>>32&1],
 				g->seg[a->w>>1].name, "+-"[a->w&1], a->ov, a->ow, gfa_arc_len(a), a->lw);
 	}
