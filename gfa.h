@@ -6,17 +6,28 @@
 
 #define GFA_ERR_NO_SEGLEN   1
 
-#define gfa_arc_head(a) ((uint32_t)((a)->v_lv>>32))
-#define gfa_arc_tail(a) ((a)->w)
-#define gfa_arc_len(a) ((uint32_t)(a)->v_lv)
-
 #define gfa_n_vtx(g) ((g)->n_seg << 1)
+
+/*
+   vertex_id = segment_id << 1 | orientation
+
+       |<--- lv --->|<-- ov -->|
+    v  ------------------------>
+                    ||overlap|||
+	                -------------------------->  w
+                    |<-- ow -->|<---- lw ---->|
+ */
 
 typedef struct {
 	uint64_t v_lv;
-	uint32_t ov, w, ow, lw;
+	uint32_t w, lw;
+	int32_t ov, ow;
 	uint64_t link_id:62, del:1, comp:1;
 } gfa_arc_t;
+
+#define gfa_arc_head(a) ((uint32_t)((a)->v_lv>>32))
+#define gfa_arc_tail(a) ((a)->w)
+#define gfa_arc_len(a) ((uint32_t)(a)->v_lv)
 
 typedef struct {
 	uint32_t max, cnt;

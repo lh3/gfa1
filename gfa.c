@@ -1,5 +1,6 @@
 #include <zlib.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include "gfa.h"
@@ -78,7 +79,7 @@ uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, uint32_t ov, uint32_t ow
 	return a->link_id;
 }
 
-void gfa_parse_S(gfa_t *g, char *s)
+int gfa_parse_S(gfa_t *g, char *s)
 {
 	int i;
 	char *p, *q;
@@ -89,16 +90,20 @@ void gfa_parse_S(gfa_t *g, char *s)
 			*p = 0;
 			switch (i) {
 				case 0: sid = gfa_add_seg(g, q); break;
-				case 1: g->seg[sid].len = strtol(q, &q, 10); break;
+				case 1:
+					if (!isdigit(*q)) return -2;
+					g->seg[sid].len = strtol(q, &q, 10);
+					break;
 				case 2: g->seg[sid].seq = q[0] == '*'? 0 : strdup(q); break;
 			}
 			++i, q = p + 1;
 			if (c == 0) break;
 		}
 	}
+	return 0;
 }
 
-void gfa_parse_L(gfa_t *g, char *s)
+int gfa_parse_L(gfa_t *g, char *s)
 {
 	int i;
 	char *p, *q;
@@ -109,17 +114,27 @@ void gfa_parse_L(gfa_t *g, char *s)
 			*p = 0;
 			switch (i) {
 				case 0: v = gfa_add_seg(g, q) << 1; break;
-				case 1: v |= (*q != '+'); break;
+				case 1:
+					if (*q != '+' && *q != '-') return -1;
+					v |= (*q != '+');
+					break;
 				case 2: w = gfa_add_seg(g, q) << 1; break;
-				case 3: w |= (*q != '+'); break;
-				case 4: ov = strtol(q, &q, 10); break;
-				case 5: ow = *q == '*'? UINT32_MAX : strtol(q, &q, 10); break;
+				case 3:
+					if (*q != '+' && *q != '-') return -1;
+					w |= (*q != '+');
+					break;
+				case 4:
+					if (!isdigit(*q)) return -2;
+					ov = strtol(q, &q, 10);
+					break;
+				case 5: ow = *q == '*'? INT32_MAX : strtol(q, &q, 10); break;
 			}
 			++i, q = p + 1;
 			if (c == 0) break;
 		}
 	}
 	gfa_add_arc1(g, v, w, ov, ow, -1, 0);
+	return 0;
 }
 
 uint32_t gfa_fix_no_seg(gfa_t *g)
@@ -146,7 +161,7 @@ static void gfa_fix_arc_len(gfa_t *g)
 			a->del = 1;
 		} else {
 			a->v_lv |= g->seg[v>>1].len - a->ov;
-			if (a->ow != UINT32_MAX)
+			if (a->ow != INT32_MAX)
 				a->lw = g->seg[w>>1].len - a->ow;
 		}
 	}
@@ -160,7 +175,7 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 		int nv = gfa_arc_n(g, v);
 		gfa_arc_t *av = gfa_arc_a(g, v);
 		for (i = 0; i < nv; ++i) {
-			if (!av[i].del && av[i].ow == UINT32_MAX) { // overlap length is missing
+			if (!av[i].del && av[i].ow == INT32_MAX) { // overlap length is missing
 				uint32_t w = av[i].w^1;
 				int c, jv = -1, nw = gfa_arc_n(g, w);
 				gfa_arc_t *aw = gfa_arc_a(g, w);
@@ -172,7 +187,7 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 								__func__, g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[w&1]);
 					++n_err;
 					av[i].del = 1;
-				} else if (aw[jv].ow != UINT32_MAX && aw[jv].ow != av[i].ov) {
+				} else if (aw[jv].ow != INT32_MAX && aw[jv].ow != av[i].ov) {
 					if (gfa_verbose >= 2)
 						fprintf(stderr, "[W::%s] inconsistent overlap length between %s%c -> %s%c and its complement\n",
 								__func__, g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[w&1]);
@@ -246,15 +261,20 @@ gfa_t *gfa_read(const char *fn)
 	kstring_t s = {0,0,0};
 	kstream_t *ks;
 	int dret;
+	uint64_t lineno = 0;
 
 	fp = fn && strcmp(fn, "-")? gzopen(fn, "r") : gzdopen(fileno(stdin), "r");
 	if (fp == 0) return 0;
 	ks = ks_init(fp);
 	g = gfa_init();
 	while (ks_getuntil(ks, KS_SEP_LINE, &s, &dret) >= 0) {
+		int ret = 0;
+		++lineno;
 		if (s.l < 3 || s.s[1] != '\t') continue; // empty line
-		if (s.s[0] == 'S') gfa_parse_S(g, s.s);
-		else if (s.s[0] == 'L') gfa_parse_L(g, s.s);
+		if (s.s[0] == 'S') ret = gfa_parse_S(g, s.s);
+		else if (s.s[0] == 'L') ret = gfa_parse_L(g, s.s);
+		if (ret < 0 && gfa_verbose >= 1)
+			fprintf(stderr, "ERROR: invalid %c-line at line %ld (error code %d)\n", s.s[0], (long)lineno, ret);
 	}
 	gfa_fix_no_seg(g);
 	gfa_arc_sort(g);
