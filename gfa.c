@@ -107,7 +107,7 @@ int gfa_parse_S(gfa_t *g, char *s)
 
 int gfa_parse_L(gfa_t *g, char *s)
 {
-	int i, oriv, oriw;
+	int i, oriv, oriw, is_gfa1 = 0;
 	char *p, *q, *segv = 0, *segw = 0;
 	int32_t ov = INT32_MAX, ow = INT32_MAX;
 	for (i = 0, p = q = s + 2;; ++p) {
@@ -125,9 +125,21 @@ int gfa_parse_L(gfa_t *g, char *s)
 				if (*q != '+' && *q != '-') return -2;
 				oriw = (*q != '+');
 			} else if (i == 4) {
+				char *r;
 				if (!isdigit(*q)) return -2;
-				ov = strtol(q, &q, 10);
-			} else if (i == 5) {
+				ov = strtol(q, &r, 10);
+				if (isupper(*r)) { // GFA1 L-line
+					ov = ow = 0;
+					do {
+						long l;
+						l = strtol(q, &q, 10);
+						if (*q == 'M' || *q == 'D' || *q == 'N') ov += l;
+						if (*q == 'M' || *q == 'I' || *q == 'S') ow += l;
+						++q;
+					} while (isdigit(*q));
+					is_gfa1 = 1;
+				}
+			} else if (!is_gfa1 && i == 5) {
 				if (!isdigit(*q) && *q != '*') return -2;
 				ow = *q == '*'? INT32_MAX : strtol(q, &q, 10);
 			}
@@ -135,7 +147,7 @@ int gfa_parse_L(gfa_t *g, char *s)
 			if (c == 0) break;
 		}
 	}
-	if (i >= 6) {
+	if (i >= 6 || (is_gfa1 && i >= 5)) {
 		uint32_t v, w;
 		v = gfa_add_seg(g, segv) << 1 | oriv;
 		w = gfa_add_seg(g, segw) << 1 | oriw;

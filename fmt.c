@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "gfa.h"
 
-int main(int argc, char *argv[])
+int main_fmt(int argc, char *argv[])
 {
 	gfa_t *g;
 	int c;
@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "")) >= 0) {
 	}
 	if (argc == optind) {
-		fprintf(stderr, "Usage: gfa2 refmt [options] <in.gfa>\n");
+		fprintf(stderr, "Usage: gfa2 fmt [options] <in.gfa>\n");
 		return 1;
 	}
 	g = gfa_read(argv[optind]);

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_ERR_NO_SEGLEN   1
+#define GFA_VERSION "N/A"
 
 #define gfa_n_vtx(g) ((g)->n_seg << 1)
 
