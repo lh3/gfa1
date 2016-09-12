@@ -1,11 +1,20 @@
+# a link above all segment lines
 L	A	-	C	-	49	49
 S	A	120	*
 S	B	230	*
 L	A	-	B	+	50	51
 S	C	169	*
+# an error: D is not defined in the entire file
 L	A	-	D	+	50	51
 S	E	251	*
+# a half-link: the 2nd overlap length is missing
 L	A	+	E	+	61	*
-L	A	*	E	*
 L	E	-	A	-	60	*
+# another error: complement link missing at a half-link
+L	B	+	E	-	50	*
+# syntax error: [+-] is expected
+L	B	*	E	*
+# a GFA1 L-line
 L	B	-	C	-	10S31M9N
+# a multiple edge (different overlap lengths from above)
+L	C	+	B	+	50	50

@@ -141,7 +141,7 @@ Each M-line also has a complement M-line.
 1. Optional fields
 2. Paths and Threads (for traversing matches)
 3. To store both link and complement link or not
-4. Nail down the format of M-line
+4. Nail down the format of M-line (alternative: Jason's way or the PAF/BLAST way)
 
 [sa]: https://en.wikipedia.org/wiki/Sequence_assembly
 [sg]: http://bioinformatics.oxfordjournals.org/content/21/suppl_2/ii79.abstract

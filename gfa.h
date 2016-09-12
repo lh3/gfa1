@@ -27,7 +27,7 @@ typedef struct {
 
 #define gfa_arc_head(a) ((uint32_t)((a)->v_lv>>32))
 #define gfa_arc_tail(a) ((a)->w)
-#define gfa_arc_len(a) ((uint32_t)(a)->v_lv) // this is different from the original string graph!
+#define gfa_arc_len(a) ((uint32_t)(a)->v_lv) // different from the original string graph
 
 typedef struct {
 	uint32_t max, cnt;
@@ -59,6 +59,11 @@ extern "C" {
 gfa_t *gfa_read(const char *fn);
 void gfa_destroy(gfa_t *g);
 void gfa_print(const gfa_t *g, FILE *fp);
+
+// Trivial to implement, but not done yet:
+int32_t gfa_seg_get(const gfa_t *g, const char *seg_name); // return segment index
+void gfa_seg_del(gfa_t *g, int32_t seg_id);
+gfa_arc_t *gfa_arc_neighbor(const gfa_t *g, int32_t seg_id, int ori, int *n_arc);
 
 #ifdef __cplusplus
 }

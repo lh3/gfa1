@@ -225,7 +225,7 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 				if (c != 1 || (aw[jv].ow != INT32_MAX && aw[jv].ow != av[i].ov)) { // no complement edge or multiple edges
 					if (gfa_verbose >= 2)
 						fprintf(stderr, "WARNING: can't infer complement overlap length for %s%c -> %s%c\n",
-								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[w&1]);
+								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[(w^1)&1]);
 					++n_err;
 					av[i].del = 1;
 				} else av[i].ow = aw[jv].ov;
