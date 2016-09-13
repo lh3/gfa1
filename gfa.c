@@ -148,7 +148,9 @@ uint8_t *gfa_aux_get(int l_data, const uint8_t *data, const char tag[2])
 	return 0;
 }
 
-/*********************************/
+/******************
+ * Basic routines *
+ ******************/
 
 gfa_t *gfa_init(void)
 {
@@ -215,6 +217,32 @@ uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, int32_t ov, int32_t ow, 
 	a->comp = comp;
 	return a->link_id;
 }
+
+void gfa_arc_sort(gfa_t *g)
+{
+	radix_sort_arc(g->arc, g->arc + g->n_arc);
+}
+
+uint64_t *gfa_arc_index_core(size_t max_seq, size_t n, const gfa_arc_t *a)
+{
+	size_t i, last;
+	uint64_t *idx;
+	idx = (uint64_t*)calloc(max_seq * 2, 8);
+	for (i = 1, last = 0; i <= n; ++i)
+		if (i == n || gfa_arc_head(&a[i-1]) != gfa_arc_head(&a[i]))
+			idx[gfa_arc_head(&a[i-1])] = (uint64_t)last<<32 | (i - last), last = i;
+	return idx;
+}
+
+void gfa_arc_index(gfa_t *g)
+{
+	if (g->idx) free(g->idx);
+	g->idx = gfa_arc_index_core(g->n_seg, g->n_arc, g->arc);
+}
+
+/****************
+ * Line parsers *
+ ****************/
 
 int gfa_parse_S(gfa_t *g, char *s)
 {
@@ -330,27 +358,9 @@ int gfa_parse_L(gfa_t *g, char *s)
 	return 0;
 }
 
-void gfa_arc_sort(gfa_t *g)
-{
-	radix_sort_arc(g->arc, g->arc + g->n_arc);
-}
-
-uint64_t *gfa_arc_index_core(size_t max_seq, size_t n, const gfa_arc_t *a)
-{
-	size_t i, last;
-	uint64_t *idx;
-	idx = (uint64_t*)calloc(max_seq * 2, 8);
-	for (i = 1, last = 0; i <= n; ++i)
-		if (i == n || gfa_arc_head(&a[i-1]) != gfa_arc_head(&a[i]))
-			idx[gfa_arc_head(&a[i-1])] = (uint64_t)last<<32 | (i - last), last = i;
-	return idx;
-}
-
-void gfa_arc_index(gfa_t *g)
-{
-	if (g->idx) free(g->idx);
-	g->idx = gfa_arc_index_core(g->n_seg, g->n_arc, g->arc);
-}
+/********************
+ * Fix graph issues *
+ ********************/
 
 uint32_t gfa_fix_no_seg(gfa_t *g)
 {
@@ -440,6 +450,10 @@ uint32_t gfa_fix_symm(gfa_t *g)
 	}
 	return n_err;
 }
+
+/****************
+ * User-end I/O *
+ ****************/
 
 gfa_t *gfa_read(const char *fn)
 {
