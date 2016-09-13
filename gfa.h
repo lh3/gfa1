@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r15"
+#define GFA_VERSION "r17"
 
 #define gfa_n_vtx(g) ((g)->n_seg << 1)
 
@@ -48,7 +48,7 @@ typedef struct {
 	// links
 	uint64_t m_arc, n_arc;
 	gfa_arc_t *arc;
-	gfa_aux_t *aux_arc;
+	gfa_aux_t *arc_aux;
 	uint64_t *idx;
 } gfa_t;
 

@@ -161,13 +161,16 @@ gfa_t *gfa_init(void)
 void gfa_destroy(gfa_t *g)
 {
 	uint32_t i;
+	uint64_t k;
 	if (g == 0) return;
 	kh_destroy(seg, (seghash_t*)g->h_names);
 	for (i = 0; i < g->n_seg; ++i) {
 		free(g->seg[i].name);
 		free(g->seg[i].aux.aux);
 	}
-	free(g->seg); free(g->arc);
+	for (k = 0; k < g->n_arc; ++k)
+		free(g->arc_aux[k].aux);
+	free(g->idx); free(g->seg); free(g->arc); free(g->arc_aux);
 	free(g);
 }
 
@@ -176,12 +179,14 @@ uint32_t gfa_add_seg(gfa_t *g, const char *name)
 	khint_t k;
 	int absent;
 	seghash_t *h = (seghash_t*)g->h_names;
-	k = kh_put(seg, g->h_names, name, &absent);
+	k = kh_put(seg, h, name, &absent);
 	if (absent) {
 		gfa_seg_t *s;
 		if (g->n_seg == g->m_seg) {
+			uint32_t old_m = g->m_seg;
 			g->m_seg = g->m_seg? g->m_seg<<1 : 16;
 			g->seg = (gfa_seg_t*)realloc(g->seg, g->m_seg * sizeof(gfa_seg_t));
+			memset(&g->seg[old_m], 0, (g->m_seg - old_m) * sizeof(gfa_seg_t));
 		}
 		s = &g->seg[g->n_seg++];
 		kh_key(h, k) = s->name = strdup(name);
@@ -195,8 +200,12 @@ uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, int32_t ov, int32_t ow, 
 {
 	gfa_arc_t *a;
 	if (g->m_arc == g->n_arc) {
+		uint64_t old_m = g->m_arc;
 		g->m_arc = g->m_arc? g->m_arc<<1 : 16;
 		g->arc = (gfa_arc_t*)realloc(g->arc, g->m_arc * sizeof(gfa_arc_t));
+		memset(&g->arc[old_m], 0, (g->m_arc - old_m) * sizeof(gfa_arc_t));
+		g->arc_aux = (gfa_aux_t*)realloc(g->arc_aux, g->m_arc * sizeof(gfa_aux_t));
+		memset(&g->arc_aux[old_m], 0, (g->m_arc - old_m) * sizeof(gfa_aux_t));
 	}
 	a = &g->arc[g->n_arc++];
 	a->v_lv = (uint64_t)v << 32;
@@ -260,8 +269,8 @@ int gfa_parse_S(gfa_t *g, char *s)
 
 int gfa_parse_L(gfa_t *g, char *s)
 {
-	int i, oriv, oriw, is_gfa1 = 0;
-	char *p, *q, *segv = 0, *segw = 0;
+	int i, oriv = -1, oriw = -1, is_gfa1 = 0, is_ok = 0;
+	char *p, *q, *segv = 0, *segw = 0, *rest = 0;
 	int32_t ov = INT32_MAX, ow = INT32_MAX;
 	for (i = 0, p = q = s + 2;; ++p) {
 		if (*p == 0 || *p == '\t') {
@@ -297,14 +306,26 @@ int gfa_parse_L(gfa_t *g, char *s)
 				ow = *q == '*'? INT32_MAX : strtol(q, &q, 10);
 			}
 			++i, q = p + 1;
+			if ((is_gfa1 && i == 5) || i == 6) {
+				rest = c == 0? 0 : q, is_ok = 1;
+				break;
+			}
 			if (c == 0) break;
 		}
 	}
-	if (i >= 6 || (is_gfa1 && i >= 5)) {
+	if (is_ok) {
 		uint32_t v, w;
+		uint64_t link_id;
+		int l_aux, m_aux = 0;
+		uint8_t *aux = 0;
 		v = gfa_add_seg(g, segv) << 1 | oriv;
 		w = gfa_add_seg(g, segw) << 1 | oriw;
-		gfa_add_arc1(g, v, w, ov, ow, -1, 0);
+		link_id = gfa_add_arc1(g, v, w, ov, ow, -1, 0);
+		l_aux = gfa_aux_parse(rest, &aux, &m_aux); // parse optional tags
+		if (l_aux) {
+			gfa_aux_t *a = &g->arc_aux[link_id];
+			a->l_aux = l_aux, a->m_aux = m_aux, a->aux = aux;
+		}
 	} else return -1;
 	return 0;
 }
@@ -442,6 +463,7 @@ gfa_t *gfa_read(const char *fn)
 		if (ret < 0 && gfa_verbose >= 1)
 			fprintf(stderr, "ERROR: invalid %c-line at line %ld (error code %d)\n", s.s[0], (long)lineno, ret);
 	}
+	free(s.s);
 	gfa_fix_no_seg(g);
 	gfa_arc_sort(g);
 	gfa_arc_index(g);
@@ -475,7 +497,15 @@ void gfa_print(const gfa_t *g, FILE *fp)
 	for (k = 0; k < g->n_arc; ++k) {
 		const gfa_arc_t *a = &g->arc[k];
 		if (a->del || a->comp) continue;
-		fprintf(fp, "L\t%s\t%c\t%s\t%c\t%d\t%d\tL1:i:%d\tL2:i:%d\n", g->seg[a->v_lv>>33].name, "+-"[a->v_lv>>32&1],
+		fprintf(fp, "L\t%s\t%c\t%s\t%c\t%d\t%d\tL1:i:%d\tL2:i:%d", g->seg[a->v_lv>>33].name, "+-"[a->v_lv>>32&1],
 				g->seg[a->w>>1].name, "+-"[a->w&1], a->ov, a->ow, gfa_arc_len(a), a->lw);
+		if (g->arc_aux[a->link_id].aux) {
+			char *t = 0;
+			int max = 0, len;
+			len = gfa_aux_format(g->arc_aux[a->link_id].l_aux, g->arc_aux[a->link_id].aux, &t, &max);
+			fputs(t, fp);
+			free(t);
+		}
+		fputc('\n', fp);
 	}
 }
