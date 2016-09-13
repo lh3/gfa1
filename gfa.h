@@ -4,17 +4,15 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r19"
-
-#define gfa_n_vtx(g) ((g)->n_seg << 1)
+#define GFA_VERSION "r20"
 
 /*
-   A segment is a sequence. A vertex is one side of a segment. In the code,
-   segment_id is an integer, and vertex_id=segment_id<<1|orientation. The
-   convention is to use variable u, v or w for a vertex, not for a segment. An
-   arc is a directed edge between two vertices in the graph. Each arc has a
-   complement arc. A link represents an arc and its complement. The following
-   diagram shows an arc v->w, and the lengths used in the gfa_arc_t struct:
+  A segment is a sequence. A vertex is one side of a segment. In the code,
+  segment_id is an integer, and vertex_id=segment_id<<1|orientation. The
+  convention is to use variable u, v or w for a vertex, not for a segment. An
+  arc is a directed edge between two vertices in the graph. Each arc has a
+  complement arc. A link represents an arc and its complement. The following
+  diagram shows an arc v->w, and the lengths used in the gfa_arc_t struct:
 
        |<--- lv --->|<-- ov -->|
     v: ------------------------>
@@ -22,15 +20,15 @@
                  w: -------------------------->
                     |<-- ow -->|<---- lw ---->|
 
-   The graph topology is solely represented by an array of gfa_arc_t objects
-   (see gfa_t::arc[]), where both an arc and its complement are present. The
-   array is sorted by gfa_arc_t::v_lv and indexed by gfa_t::idx[] most of time.
-   gfa_arc_a(g, v), of size gfa_arc_n(g, v), gives the array of arcs that
-   leaves a vertex v.
- */
+  The graph topology is solely represented by an array of gfa_arc_t objects
+  (see gfa_t::arc[]), where both an arc and its complement are present. The
+  array is sorted by gfa_arc_t::v_lv and indexed by gfa_t::idx[] most of time.
+  gfa_arc_a(g, v), of size gfa_arc_n(g, v), gives the array of arcs that leaves
+  a vertex v in the graph g.
+*/
 
 typedef struct {
-	uint64_t v_lv; // higher 32 bits: vertex_id; lower 32 bits: lv
+	uint64_t v_lv; // higher 32 bits: vertex_id; lower 32 bits: lv; packed together for sorting
 	uint32_t w, lw;
 	int32_t ov, ow;
 	uint64_t link_id:62, del:1, comp:1;
@@ -53,6 +51,8 @@ typedef struct {
 	char *name, *seq;
 	gfa_aux_t aux;
 } gfa_seg_t;
+
+#define gfa_n_vtx(g) ((g)->n_seg << 1)
 
 typedef struct {
 	// segments
