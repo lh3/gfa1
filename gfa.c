@@ -20,9 +20,6 @@ KRADIX_SORT_INIT(arc, gfa_arc_t, gfa_arc_key, 8)
 
 int gfa_verbose = 2;
 
-#define gfa_arc_n(g, v) ((uint32_t)(g)->idx[(v)])
-#define gfa_arc_a(g, v) (&(g)->arc[(g)->idx[(v)]>>32])
-
 /********************
  * Tag manipulation *
  ********************/
