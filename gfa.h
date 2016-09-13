@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r12"
+#define GFA_VERSION "r15"
 
 #define gfa_n_vtx(g) ((g)->n_seg << 1)
 
@@ -30,8 +30,8 @@ typedef struct {
 #define gfa_arc_len(a) ((uint32_t)(a)->v_lv) // different from the original string graph
 
 typedef struct {
-	uint32_t max, cnt;
-	uint8_t *data;
+	uint32_t m_aux, l_aux;
+	uint8_t *aux;
 } gfa_aux_t;
 
 typedef struct {

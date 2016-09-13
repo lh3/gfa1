@@ -3,6 +3,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include "kstring.h"
 #include "gfa.h"
 
 #include "kseq.h"
@@ -21,6 +23,133 @@ int gfa_verbose = 2;
 #define gfa_arc_n(g, v) ((uint32_t)(g)->idx[(v)])
 #define gfa_arc_a(g, v) (&(g)->arc[(g)->idx[(v)]>>32])
 
+/********************
+ * Tag manipulation *
+ ********************/
+
+int gfa_aux_parse(char *s, uint8_t **data, int *max)
+{
+	char *q, *p;
+	kstring_t str;
+	if (s == 0) return 0;
+	str.l = 0, str.m = *max, str.s = (char*)*data;
+	if (*s == '\t') ++s;
+	for (p = q = s;; ++p) {
+		if (*p == 0 || *p == '\t') {
+			int c = *p;
+			*p = 0;
+			if (p - q >= 5 && q[2] == ':' && q[4] == ':' && (q[3] == 'A' || q[3] == 'i' || q[3] == 'f' || q[3] == 'Z' || q[3] == 'B')) {
+				int type = q[3];
+				kputsn_(q, 2, &str);
+				q += 5;
+				if (type == 'A') {
+					kputc_('A', &str);
+					kputc_(*q, &str);
+				} else if (type == 'i') {
+					int32_t x;
+					x = strtol(q, &q, 10);
+					kputc_(type, &str); kputsn_((char*)&x, 4, &str);
+				} else if (type == 'f') {
+					float x;
+					x = strtod(q, &q);
+					kputc_('f', &str); kputsn_(&x, 4, &str);
+				} else if (type == 'Z') {
+					kputc_('Z', &str); kputsn_(q, p - q + 1, &str); // note that this include the trailing NULL
+				} else if (type == 'B') {
+					type = *q++; // q points to the first ',' following the typing byte
+					if (p - q >= 2 && (type == 'c' || type == 'C' || type == 's' || type == 'S' || type == 'i' || type == 'I' || type != 'f')) {
+						int32_t n;
+						char *r;
+						for (r = q, n = 0; *r; ++r)
+							if (*r == ',') ++n;
+						kputc_('B', &str); kputc_(type, &str); kputsn_(&n, 4, &str);
+						// TODO: to evaluate which is faster: a) aligned array and then memmove(); b) unaligned array; c) kputsn_()
+						if (type == 'c')      while (q + 1 < p) { int8_t   x = strtol(q + 1, &q, 0); kputc_(x, &str); }
+						else if (type == 'C') while (q + 1 < p) { uint8_t  x = strtol(q + 1, &q, 0); kputc_(x, &str); }
+						else if (type == 's') while (q + 1 < p) { int16_t  x = strtol(q + 1, &q, 0); kputsn_(&x, 2, &str); }
+						else if (type == 'S') while (q + 1 < p) { uint16_t x = strtol(q + 1, &q, 0); kputsn_(&x, 2, &str); }
+						else if (type == 'i') while (q + 1 < p) { int32_t  x = strtol(q + 1, &q, 0); kputsn_(&x, 4, &str); }
+						else if (type == 'I') while (q + 1 < p) { uint32_t x = strtol(q + 1, &q, 0); kputsn_(&x, 4, &str); }
+						else if (type == 'f') while (q + 1 < p) { float    x = strtod(q + 1, &q);    kputsn_(&x, 4, &str); }
+					}
+				} // should not be here, as we have tested all types
+			}
+			q = p + 1;
+			if (c == 0) break;
+		}
+	}
+	if (str.s) str.s[str.l] = 0;
+	*max = str.m, *data = (uint8_t*)str.s;
+	return str.l;
+}
+
+int gfa_aux_format(int l_aux, const uint8_t *aux, char **t, int *max)
+{
+	kstring_t str;
+	const uint8_t *s = aux;
+	str.l = 0, str.s = *t, str.m = *max;
+	while (s < aux + l_aux) {
+		uint8_t type, key[2];
+		key[0] = s[0]; key[1] = s[1];
+		s += 2; type = *s++;
+		kputc('\t', &str); kputsn((char*)key, 2, &str); kputc(':', &str);
+		if (type == 'A') { kputsn("A:", 2, &str); kputc(*s, &str); ++s; }
+		else if (type == 'i') { kputsn("i:", 2, &str); kputw(*(int32_t*)s, &str); s += 4; }
+		else if (type == 'f') { ksprintf(&str, "f:%g", *(float*)s); s += 4; }
+		else if (type == 'Z') { kputc(type, &str); kputc(':', &str); while (*s) kputc(*s++, &str); ++s; }
+		else if (type == 'B') {
+			uint8_t sub_type = *(s++);
+			int32_t i, n;
+			memcpy(&n, s, 4);
+			s += 4; // no point to the start of the array
+			kputsn("B:", 2, &str); kputc(sub_type, &str); // write the typing
+			for (i = 0; i < n; ++i) { // FIXME: for better performance, put the loop after "if"
+				kputc(',', &str);
+				if ('c' == sub_type)      { kputw(*(int8_t*)s, &str); ++s; }
+				else if ('C' == sub_type) { kputw(*(uint8_t*)s, &str); ++s; }
+				else if ('s' == sub_type) { kputw(*(int16_t*)s, &str); s += 2; }
+				else if ('S' == sub_type) { kputw(*(uint16_t*)s, &str); s += 2; }
+				else if ('i' == sub_type) { kputw(*(int32_t*)s, &str); s += 4; }
+				else if ('I' == sub_type) { kputuw(*(uint32_t*)s, &str); s += 4; }
+				else if ('f' == sub_type) { ksprintf(&str, "%g", *(float*)s); s += 4; }
+			}
+		}
+	}
+	*t = str.s, *max = str.m;
+	return str.l;
+}
+
+static inline int gfa_aux_type2size(int x)
+{
+	if (x == 'C' || x == 'c' || x == 'A') return 1;
+	else if (x == 'S' || x == 's') return 2;
+	else if (x == 'I' || x == 'i' || x == 'f') return 4;
+	else return 0;
+}
+
+#define __skip_tag(s) do { \
+		int type = toupper(*(s)); \
+		++(s); \
+		if (type == 'Z') { while (*(s)) ++(s); ++(s); } \
+		else if (type == 'B') (s) += 5 + gfa_aux_type2size(*(s)) * (*(int32_t*)((s)+1)); \
+		else (s) += gfa_aux_type2size(type); \
+	} while(0)
+
+uint8_t *gfa_aux_get(int l_data, const uint8_t *data, const char tag[2])
+{
+	const uint8_t *s = data;
+	int y = tag[0]<<8 | tag[1];
+	while (s < data + l_data) {
+		int x = (int)s[0]<<8 | s[1];
+		s += 2;
+		if (x == y) return (uint8_t*)s;
+		__skip_tag(s);
+	}
+	return 0;
+}
+
+/*********************************/
+
 gfa_t *gfa_init(void)
 {
 	gfa_t *g;
@@ -34,8 +163,10 @@ void gfa_destroy(gfa_t *g)
 	uint32_t i;
 	if (g == 0) return;
 	kh_destroy(seg, (seghash_t*)g->h_names);
-	for (i = 0; i < g->n_seg; ++i)
+	for (i = 0; i < g->n_seg; ++i) {
 		free(g->seg[i].name);
+		free(g->seg[i].aux.aux);
+	}
 	free(g->seg); free(g->arc);
 	free(g);
 }
@@ -78,8 +209,8 @@ uint64_t gfa_add_arc1(gfa_t *g, uint32_t v, uint32_t w, int32_t ov, int32_t ow, 
 
 int gfa_parse_S(gfa_t *g, char *s)
 {
-	int i;
-	char *p, *q, *seg = 0, *seq = 0;
+	int i, is_gfa1 = 0, is_ok = 0;
+	char *p, *q, *seg = 0, *seq = 0, *rest = 0;
 	uint32_t sid, len = 0;
 	for (i = 0, p = q = s + 2;; ++p) {
 		if (*p == 0 || *p == '\t') {
@@ -88,19 +219,41 @@ int gfa_parse_S(gfa_t *g, char *s)
 			if (i == 0) {
 				seg = q;
 			} else if (i == 1) {
-				if (!isdigit(*q)) return -2;
+				if (isalpha(*q) || *q == '*') seq = *q == '*'? 0 : q, is_gfa1 = 1;
+				else if (!isdigit(*q)) return -2;
 				len = strtol(q, &q, 10);
 			} else if (i == 2) {
 				seq = q[0] == '*'? 0 : strdup(q);
 			}
 			++i, q = p + 1;
+			if ((is_gfa1 && i == 2) || i == 3) {
+				rest = c == 0? 0 : q, is_ok = 1;
+				break;
+			}
 			if (c == 0) break;
 		}
 	}
-	if (i >= 3) {
+	if (is_ok) { // all mandatory fields read
+		int l_aux, m_aux = 0;
+		uint8_t *aux = 0;
+		gfa_seg_t *s;
+		l_aux = gfa_aux_parse(rest, &aux, &m_aux); // parse optional tags
+		if (is_gfa1) { // find sequence length for GFA1
+			if (!seq) {
+				uint8_t *s;
+				s = gfa_aux_get(l_aux, aux, "LN");
+				if (s && s[0] == 'i')
+					len = *(int32_t*)(s+1);
+			} else len = strlen(seq);
+		}
+		if (len == 0 || (seq && len != strlen(seq))) { // no sequence length, or different from the actual sequence length
+			free(aux);
+			return -3;
+		}
 		sid = gfa_add_seg(g, seg);
-		g->seg[sid].len = len;
-		g->seg[sid].seq = seq;
+		s = &g->seg[sid];
+		s->len = len, s->seq = seq;
+		s->aux.m_aux = m_aux, s->aux.l_aux = l_aux, s->aux.aux = aux;
 	} else return -1;
 	return 0;
 }
@@ -310,6 +463,13 @@ void gfa_print(const gfa_t *g, FILE *fp)
 		fprintf(fp, "S\t%s\t%d\t", s->name, s->len);
 		if (s->seq) fputs(s->seq, fp);
 		else fputc('*', fp);
+		if (s->aux.l_aux > 0) {
+			char *t = 0;
+			int max = 0, len;
+			len = gfa_aux_format(s->aux.l_aux, s->aux.aux, &t, &max);
+			fputs(t, fp);
+			free(t);
+		}
 		fputc('\n', fp);
 	}
 	for (k = 0; k < g->n_arc; ++k) {

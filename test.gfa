@@ -1,7 +1,7 @@
 # a link above all segment lines
 L	A	-	C	-	49	49
-S	A	120	*
-S	B	230	*
+S	A	*	LN:i:120
+S	B	230	*	fo:Z:abc	ba:f:0.1	tm:B:i,10,20
 L	A	-	B	+	50	51
 S	C	169	*
 # an error: D is not defined in the entire file
