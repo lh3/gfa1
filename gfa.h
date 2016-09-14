@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r20"
+#define GFA_VERSION "r21"
 
 /*
   A segment is a sequence. A vertex is one side of a segment. In the code,
@@ -34,9 +34,9 @@ typedef struct {
 	uint64_t link_id:62, del:1, comp:1;
 } gfa_arc_t;
 
-#define gfa_arc_head(a) ((uint32_t)((a)->v_lv>>32))
-#define gfa_arc_tail(a) ((a)->w)
-#define gfa_arc_len(a) ((uint32_t)(a)->v_lv) // different from the original string graph
+#define gfa_arc_head(a) ((uint32_t)((a).v_lv>>32))
+#define gfa_arc_tail(a) ((a).w)
+#define gfa_arc_len(a) ((uint32_t)(a).v_lv) // different from the original string graph
 
 #define gfa_arc_n(g, v) ((uint32_t)(g)->idx[(v)])
 #define gfa_arc_a(g, v) (&(g)->arc[(g)->idx[(v)]>>32])
@@ -60,7 +60,7 @@ typedef struct {
 	gfa_seg_t *seg;
 	void *h_names;
 	// links
-	uint64_t m_arc, n_arc;
+	uint64_t m_arc, n_arc:62, is_srt:1, is_symm:1;
 	gfa_arc_t *arc;
 	gfa_aux_t *arc_aux;
 	uint64_t *idx;
@@ -74,13 +74,40 @@ gfa_t *gfa_read(const char *fn);
 void gfa_destroy(gfa_t *g);
 void gfa_print(const gfa_t *g, FILE *fp);
 
-// Trivial to implement, but not done yet:
-int32_t gfa_seg_get(const gfa_t *g, const char *seg_name); // return segment index
-void gfa_seg_del(gfa_t *g, int32_t seg_id);
-gfa_arc_t *gfa_arc_neighbor(const gfa_t *g, int32_t seg_id, int ori, int *n_arc);
+void gfa_symm(gfa_t *g); // delete multiple edges and restore skew-symmetry
+void gfa_cleanup(gfa_t *g); // permanently delete arcs marked as deleted, sort and then index
+int gfa_arc_del_trans(gfa_t *g, int fuzz); // transitive reduction
+int gfa_arc_del_short(gfa_t *g, float drop_ratio); // delete short arcs
+int gfa_cut_tip(gfa_t *g, int max_ext); // cut tips
+int gfa_cut_internal(gfa_t *g, int max_ext); // drop internal segments
+int gfa_cut_biloop(gfa_t *g, int max_ext); // Hmm... I forgot... Some type of weird local topology
+int gfa_pop_bubble(gfa_t *g, int max_dist); // bubble popping
 
 #ifdef __cplusplus
 }
 #endif
+
+static inline void gfa_arc_del(gfa_t *g, uint32_t v, uint32_t w, int del)
+{
+	uint32_t i, nv = gfa_arc_n(g, v);
+	gfa_arc_t *av = gfa_arc_a(g, v);
+	for (i = 0; i < nv; ++i)
+		if (av[i].w == w) av[i].del = !!del;
+}
+
+static inline void gfa_seg_del(gfa_t *g, uint32_t s)
+{
+	uint32_t k;
+	g->seg[s].del = 1;
+	for (k = 0; k < 2; ++k) {
+		uint32_t i, v = s<<1 | k;
+		uint32_t nv = gfa_arc_n(g, v);
+		gfa_arc_t *av = gfa_arc_a(g, v);
+		for (i = 0; i < nv; ++i) {
+			av[i].del = 1;
+			gfa_arc_del(g, av[i].w^1, v^1, 1);
+		}
+	}
+}
 
 #endif
