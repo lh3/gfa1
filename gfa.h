@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r21"
+#define GFA_VERSION "r23"
 
 /*
   A segment is a sequence. A vertex is one side of a segment. In the code,
@@ -65,6 +65,8 @@ typedef struct {
 	gfa_aux_t *arc_aux;
 	uint64_t *idx;
 } gfa_t;
+
+extern int gfa_verbose;
 
 #ifdef __cplusplus
 extern "C" {

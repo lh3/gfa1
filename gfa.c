@@ -367,7 +367,7 @@ uint32_t gfa_fix_no_seg(gfa_t *g)
 		if (s->len == 0) {
 			++n_err, s->del = 1;
 			if (gfa_verbose >= 2)
-				fprintf(stderr, "WARNING: segment '%s' is used on an L-line but not defined on an S-line\n", s->name);
+				fprintf(stderr, "[W] segment '%s' is used on an L-line but not defined on an S-line\n", s->name);
 		}
 	}
 	return n_err;
@@ -405,7 +405,7 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 					if (!aw[j].del && aw[j].w == (v^1)) ++c, jv = j;
 				if (c != 1 || (aw[jv].ow != INT32_MAX && aw[jv].ow != av[i].ov)) { // no complement edge or multiple edges
 					if (gfa_verbose >= 2)
-						fprintf(stderr, "WARNING: can't infer complement overlap length for %s%c -> %s%c\n",
+						fprintf(stderr, "[W] can't infer complement overlap length for %s%c -> %s%c\n",
 								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[(w^1)&1]);
 					++n_err;
 					av[i].del = 1;
@@ -472,7 +472,7 @@ gfa_t *gfa_read(const char *fn)
 		if (s.s[0] == 'S') ret = gfa_parse_S(g, s.s);
 		else if (s.s[0] == 'L') ret = gfa_parse_L(g, s.s);
 		if (ret < 0 && gfa_verbose >= 1)
-			fprintf(stderr, "ERROR: invalid %c-line at line %ld (error code %d)\n", s.s[0], (long)lineno, ret);
+			fprintf(stderr, "[E] invalid %c-line at line %ld (error code %d)\n", s.s[0], (long)lineno, ret);
 	}
 	free(s.s);
 	gfa_fix_no_seg(g);
@@ -572,7 +572,7 @@ int gfa_arc_del_short(gfa_t *g, float drop_ratio)
 		gfa_cleanup(g);
 		gfa_symm(g);
 	}
-	if (gfa_verbose >= 3) fprintf(stderr, "[M::%s] removed %d short overlaps\n", __func__, n_short);
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] removed %d short overlaps\n", n_short);
 	return n_short;
 }
 
@@ -592,7 +592,7 @@ static int gfa_arc_del_multi(gfa_t *g)
 	}
 	free(cnt);
 	if (n_multi) gfa_cleanup(g);
-	fprintf(stderr, "[M::%s] removed %d multi-arcs\n", __func__, n_multi);
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] removed %d multi-arcs\n", n_multi);
 	return n_multi;
 }
 
@@ -609,7 +609,7 @@ static int gfa_arc_del_asymm(gfa_t *g)
 		if (i == nv) g->arc[e].del = 1, ++n_asymm;
 	}
 	if (n_asymm) gfa_cleanup(g);
-	fprintf(stderr, "[M::%s] removed %d asymmetric arcs\n", __func__, n_asymm);
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] removed %d asymmetric arcs\n", n_asymm);
 	return n_asymm;
 }
 
@@ -660,7 +660,7 @@ int gfa_arc_del_trans(gfa_t *g, int fuzz)
 		}
 	}
 	free(mark);
-	fprintf(stderr, "[M::%s] transitively reduced %d arcs\n", __func__, n_reduced);
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] transitively reduced %d arcs\n", n_reduced);
 	if (n_reduced) {
 		gfa_cleanup(g);
 		gfa_symm(g);
@@ -725,7 +725,7 @@ int gfa_cut_tip(gfa_t *g, int max_ext)
 	}
 	free(a.a);
 	if (cnt > 0) gfa_cleanup(g);
-	fprintf(stderr, "[M::%s] cut %d tips\n", __func__, cnt);
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] cut %d tips\n", cnt);
 	return cnt;
 }
 
@@ -743,7 +743,7 @@ int gfa_cut_internal(gfa_t *g, int max_ext)
 	}
 	free(a.a);
 	if (cnt > 0) gfa_cleanup(g);
-	fprintf(stderr, "[M::%s] cut %d internal sequences\n", __func__, cnt);
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] cut %d internal sequences\n", cnt);
 	return cnt;
 }
 
@@ -777,7 +777,7 @@ int gfa_cut_biloop(gfa_t *g, int max_ext)
 	}
 	free(a.a);
 	if (cnt > 0) gfa_cleanup(g);
-	fprintf(stderr, "[M::%s] cut %d small bi-loops\n", __func__, cnt);
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] cut %d small bi-loops\n", cnt);
 	return cnt;
 }
 
@@ -904,6 +904,6 @@ int gfa_pop_bubble(gfa_t *g, int max_dist)
 	}
 	free(b.a); free(b.S.a); free(b.T.a); free(b.b.a); free(b.e.a);
 	if (n_pop) gfa_cleanup(g);
-	if (gfa_verbose >= 3) fprintf(stderr, "[M::%s] popped %d bubbles and trimmed %d tips\n", __func__, (uint32_t)n_pop, (uint32_t)(n_pop>>32));
+	if (gfa_verbose >= 3) fprintf(stderr, "[M] popped %d bubbles and trimmed %d tips\n", (uint32_t)n_pop, (uint32_t)(n_pop>>32));
 	return n_pop;
 }
