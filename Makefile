@@ -2,19 +2,18 @@ CC=			gcc
 CFLAGS=		-g -Wall -Wc++-compat -O2
 CPPFLAGS=
 INCLUDES=	-I.
-OBJS=		gfa.o
-PROG=		gfa2
+PROG=		gfaview
 LIBS=		-lz
 
 .SUFFIXES:.c .o
-.PHONY:all demo clean depend
+.PHONY:all clean depend
 
 .c.o:
 		$(CC) -c $(CFLAGS) $(CPPFLAGS) $(INCLUDES) $< -o $@
 
 all:$(PROG)
 
-gfa2:$(OBJS) main.o fmt.o
+gfaview:gfa.o gfaview.o
 		$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
 clean:
@@ -25,6 +24,5 @@ depend:
 
 # DO NOT DELETE
 
-fmt.o: gfa.h
-gfa.o: kstring.h gfa.h kseq.h khash.h ksort.h
-main.o: gfa.h
+gfa.o: kstring.h gfa.h kseq.h khash.h ksort.h kvec.h
+gfaview.o: gfa.h
