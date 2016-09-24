@@ -411,8 +411,8 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 					if (aw[jv].ow != INT32_MAX) av[i].ov = aw[jv].ow;
 				} else {
 					if (gfa_verbose >= 2)
-						fprintf(stderr, "[W] can't infer overlap length for %s%c -> %s%c (%d,%d)\n",
-								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[(w^1)&1], c, is_multi);
+						fprintf(stderr, "[W] can't infer overlap length for %s%c -> %s%c\n",
+								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[(w^1)&1]);
 					++n_err;
 					av[i].del = 1;
 				}
