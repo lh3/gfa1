@@ -2,10 +2,41 @@
 #include <zlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include "mag.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include "kstring.h"
 #include "kvec.h"
 #include "kseq.h"
 KSEQ_INIT(gzFile, gzread)
+
+#include "khash.h"
+KHASH_INIT2(64,, khint64_t, uint64_t, 1, kh_int64_hash_func, kh_int64_hash_equal)
+
+typedef khash_t(64) hash64_t;
+
+#define MAG_F_NO_AMEND   0x40
+
+typedef struct { uint64_t x, y; } ku128_t;
+typedef struct { size_t n, m; uint64_t *a; } ku64_v;
+typedef struct { size_t n, m; ku128_t *a; } ku128_v;
+
+typedef struct {
+	int len, nsr;    // length; number supporting reads
+	uint32_t max_len;// allocated seq/cov size
+	uint64_t k[2];   // bi-interval
+	ku128_v nei[2];  // neighbors
+	char *seq, *cov; // sequence and coverage
+	void *ptr;       // additional information
+} magv_t;
+
+typedef struct { size_t n, m; magv_t *a; } magv_v;
+
+typedef struct __mog_t {
+	magv_v v;
+	float rdist;  // read distance
+	int min_ovlp; // minimum overlap seen from the graph
+	void *h;
+} mag_t;
 
 int fm_verbose = 3;
 
@@ -19,11 +50,6 @@ unsigned char seq_nt6_table[128] = {
     5, 1, 5, 2,  5, 5, 5, 3,  5, 5, 5, 5,  5, 5, 5, 5,
     5, 5, 5, 5,  4, 5, 5, 5,  5, 5, 5, 5,  5, 5, 5, 5
 };
-
-#include "khash.h"
-KHASH_INIT2(64,, khint64_t, uint64_t, 1, kh_int64_hash_func, kh_int64_hash_equal)
-
-typedef khash_t(64) hash64_t;
 
 static inline int kputl(long c, kstring_t *s)
 {
