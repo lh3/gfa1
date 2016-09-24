@@ -251,12 +251,12 @@ int gfa_parse_S(gfa_t *g, char *s)
 			int c = *p;
 			*p = 0;
 			if (i == 0) seg = q;
-			else if (i == 1) seq = q[0] == '*'? 0 : strdup(q);
-			++i, q = p + 1;
-			if (i == 2) {
-				rest = c == 0? 0 : q, is_ok = 1;
+			else if (i == 1) {
+				seq = q[0] == '*'? 0 : strdup(q);
+				is_ok = 1, rest = c? p + 1 : 0;
 				break;
 			}
+			++i, q = p + 1;
 			if (c == 0) break;
 		}
 	}
@@ -281,7 +281,7 @@ int gfa_parse_S(gfa_t *g, char *s)
 
 int gfa_parse_L(gfa_t *g, char *s)
 {
-	int i, oriv = -1, oriw = -1, is_gfa1 = 0, is_ok = 0;
+	int i, oriv = -1, oriw = -1, is_ok = 0;
 	char *p, *q, *segv = 0, *segw = 0, *rest = 0;
 	int32_t ov = INT32_MAX, ow = INT32_MAX;
 	for (i = 0, p = q = s + 2;; ++p) {
@@ -302,7 +302,7 @@ int gfa_parse_L(gfa_t *g, char *s)
 				char *r;
 				if (!isdigit(*q)) return -2;
 				ov = strtol(q, &r, 10);
-				if (isupper(*r)) { // GFA1 L-line
+				if (isupper(*r)) { // CIGAR
 					ov = ow = 0;
 					do {
 						long l;
@@ -311,17 +311,13 @@ int gfa_parse_L(gfa_t *g, char *s)
 						if (*q == 'M' || *q == 'I' || *q == 'S') ow += l;
 						++q;
 					} while (isdigit(*q));
-					is_gfa1 = 1;
-				}
-			} else if (!is_gfa1 && i == 5) {
-				if (!isdigit(*q) && *q != '*') return -2;
-				ow = *q == '*'? INT32_MAX : strtol(q, &q, 10);
-			}
-			++i, q = p + 1;
-			if ((is_gfa1 && i == 5) || i == 6) {
-				rest = c == 0? 0 : q, is_ok = 1;
+				} else if (*r == ':') { // overlap lengths
+					ow = isdigit(*(r+1))? strtol(r+1, &r, 10) : INT32_MAX;
+				} else break;
+				is_ok = 1, rest = c? p + 1 : 0;
 				break;
 			}
+			++i, q = p + 1;
 			if (c == 0) break;
 		}
 	}
@@ -337,6 +333,12 @@ int gfa_parse_L(gfa_t *g, char *s)
 		if (l_aux) {
 			gfa_aux_t *a = &g->arc_aux[link_id];
 			a->l_aux = l_aux, a->m_aux = m_aux, a->aux = aux;
+			if (ov != INT32_MAX && g->seg[v>>1].len == 0) {
+				uint8_t *s;
+				s = gfa_aux_get(l_aux, aux, "L1");
+				if (s && s[0] == 'i')
+					g->seg[v>>1].len = ov + *(int32_t*)(s+1);
+			}
 		}
 	} else return -1;
 	return 0;
@@ -468,6 +470,7 @@ gfa_t *gfa_read(const char *fn)
 	gfa_fix_semi_arc(g);
 	gfa_fix_symm(g);
 	gfa_fix_arc_len(g);
+	gfa_cleanup(g);
 	ks_destroy(ks);
 	gzclose(fp);
 	return g;
@@ -480,9 +483,11 @@ void gfa_print(const gfa_t *g, FILE *fp)
 	for (i = 0; i < g->n_seg; ++i) {
 		const gfa_seg_t *s = &g->seg[i];
 		if (s->del) continue;
-		fprintf(fp, "S\t%s\t%d\t", s->name, s->len);
+		fprintf(fp, "S\t%s\t", s->name);
 		if (s->seq) fputs(s->seq, fp);
 		else fputc('*', fp);
+		if (s->aux.l_aux == 0 || !gfa_aux_get(s->aux.l_aux, s->aux.aux, "LN"))
+			fprintf(fp, "\tLN:i:%d", s->len);
 		if (s->aux.l_aux > 0) {
 			char *t = 0;
 			int max = 0, len;
@@ -494,13 +499,17 @@ void gfa_print(const gfa_t *g, FILE *fp)
 	}
 	for (k = 0; k < g->n_arc; ++k) {
 		const gfa_arc_t *a = &g->arc[k];
+		const gfa_aux_t *aux = &g->arc_aux[a->link_id];
 		if (a->del || a->comp) continue;
-		fprintf(fp, "L\t%s\t%c\t%s\t%c\t%d\t%d\tL1:i:%d\tL2:i:%d", g->seg[a->v_lv>>33].name, "+-"[a->v_lv>>32&1],
-				g->seg[a->w>>1].name, "+-"[a->w&1], a->ov, a->ow, gfa_arc_len(*a), a->lw);
-		if (g->arc_aux[a->link_id].aux) {
+		fprintf(fp, "L\t%s\t%c\t%s\t%c\t%d:%d", g->seg[a->v_lv>>33].name, "+-"[a->v_lv>>32&1], g->seg[a->w>>1].name, "+-"[a->w&1], a->ov, a->ow);
+		if (aux->aux == 0 || !gfa_aux_get(aux->l_aux, aux->aux, "L1"))
+			fprintf(fp, "\tL1:i:%d", gfa_arc_len(*a));
+		if (aux->aux == 0 || !gfa_aux_get(aux->l_aux, aux->aux, "L2"))
+			fprintf(fp, "\tL2:i:%d", a->lw);
+		if (aux->aux) {
 			char *t = 0;
 			int max = 0, len;
-			len = gfa_aux_format(g->arc_aux[a->link_id].l_aux, g->arc_aux[a->link_id].aux, &t, &max);
+			len = gfa_aux_format(aux->l_aux, aux->aux, &t, &max);
 			fputs(t, fp);
 			free(t);
 		}
@@ -538,6 +547,8 @@ void gfa_cleanup(gfa_t *g)
 	if (!g->is_srt) {
 		gfa_arc_sort(g);
 		g->is_srt = 1;
+		if (g->idx) free(g->idx);
+		g->idx = 0;
 	}
 	if (g->idx == 0) gfa_arc_index(g);
 }

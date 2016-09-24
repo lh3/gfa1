@@ -1,20 +1,17 @@
-# a link above all segment lines
-L	A	-	C	-	49	49
 S	A	*	LN:i:120
-S	B	230	*	fo:Z:abc	ba:f:0.1	tm:B:i,10,20
-L	A	-	B	+	50	51	ID:Z:abc123
-S	C	169	*
-# an error: D is not defined in the entire file
-L	A	-	D	+	50	51
-S	E	251	*
+S	C	*	LN:i:201	fo:Z:abc	ba:f:0.1	tm:B:i,10,20
 # a half-link: the 2nd overlap length is missing
-L	A	+	E	+	61	*
-L	E	-	A	-	60	*
-# another error: complement link missing at a half-link
-L	B	+	E	-	50	*
+L	A	+	E	+	61:
+L	E	-	A	-	60:
+# and segment E is defined later
+S	E	*	LN:i:251
+# an error: D is not defined in the entire file
+L	A	-	D	+	50:51
+# not an error: length of B can be inferred
+L	B	+	A	+	20:21	L1:i:81
 # syntax error: [+-] is expected
-L	B	*	E	*
+L	B	*	F	*
 # a GFA1 L-line
 L	B	-	C	-	10S31M9N
 # a multiple edge (different overlap lengths from above)
-L	C	+	B	+	50	50
+L	C	+	B	+	50M

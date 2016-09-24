@@ -36,8 +36,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "ERROR: failed to read the graph\n");
 		return 2;
 	}
-	gfa_cleanup(g);
-	gfa_symm(g);
+	if (optind > 1) gfa_symm(g);
 	
 	optind = 1;
 	while ((c = getopt(argc, argv, tr_opts)) >= 0) {
