@@ -339,6 +339,12 @@ int gfa_parse_L(gfa_t *g, char *s)
 				if (s && s[0] == 'i')
 					g->seg[v>>1].len = ov + *(int32_t*)(s+1);
 			}
+			if (ow != INT32_MAX && g->seg[w>>1].len == 0) {
+				uint8_t *s;
+				s = gfa_aux_get(l_aux, aux, "L2");
+				if (s && s[0] == 'i')
+					g->seg[w>>1].len = ow + *(int32_t*)(s+1);
+			}
 		}
 	} else return -1;
 	return 0;
