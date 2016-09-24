@@ -243,24 +243,17 @@ void gfa_arc_index(gfa_t *g)
 
 int gfa_parse_S(gfa_t *g, char *s)
 {
-	int i, is_gfa1 = 0, is_ok = 0;
+	int i, is_ok = 0;
 	char *p, *q, *seg = 0, *seq = 0, *rest = 0;
 	uint32_t sid, len = 0;
 	for (i = 0, p = q = s + 2;; ++p) {
 		if (*p == 0 || *p == '\t') {
 			int c = *p;
 			*p = 0;
-			if (i == 0) {
-				seg = q;
-			} else if (i == 1) {
-				if (isalpha(*q) || *q == '*') seq = *q == '*'? 0 : q, is_gfa1 = 1;
-				else if (!isdigit(*q)) return -2;
-				len = strtol(q, &q, 10);
-			} else if (i == 2) {
-				seq = q[0] == '*'? 0 : strdup(q);
-			}
+			if (i == 0) seg = q;
+			else if (i == 1) seq = q[0] == '*'? 0 : strdup(q);
 			++i, q = p + 1;
-			if ((is_gfa1 && i == 2) || i == 3) {
+			if (i == 2) {
 				rest = c == 0? 0 : q, is_ok = 1;
 				break;
 			}
@@ -272,18 +265,12 @@ int gfa_parse_S(gfa_t *g, char *s)
 		uint8_t *aux = 0;
 		gfa_seg_t *s;
 		l_aux = gfa_aux_parse(rest, &aux, &m_aux); // parse optional tags
-		if (is_gfa1) { // find sequence length for GFA1
-			if (!seq) {
-				uint8_t *s;
-				s = gfa_aux_get(l_aux, aux, "LN");
-				if (s && s[0] == 'i')
-					len = *(int32_t*)(s+1);
-			} else len = strlen(seq);
-		}
-		if (len == 0 || (seq && len != strlen(seq))) { // no sequence length, or different from the actual sequence length
-			free(aux);
-			return -3;
-		}
+		if (seq == 0) {
+			uint8_t *s;
+			s = gfa_aux_get(l_aux, aux, "LN");
+			if (s && s[0] == 'i')
+				len = *(int32_t*)(s+1);
+		} else len = strlen(seq);
 		sid = gfa_add_seg(g, seg);
 		s = &g->seg[sid];
 		s->len = len, s->seq = seq;
