@@ -3,6 +3,8 @@ S	C	*	LN:i:201	fo:Z:abc	ba:f:0.1	tm:B:i,10,20
 # a half-link: the 2nd overlap length is missing
 L	A	+	E	+	61:
 L	E	-	A	-	60:
+L	A	+	C	+	:50
+L	C	-	A	-	:51
 # and segment E is defined later
 S	E	*	LN:i:251
 # an error: D is not defined in the entire file

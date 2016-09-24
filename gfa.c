@@ -299,20 +299,24 @@ int gfa_parse_L(gfa_t *g, char *s)
 				if (*q != '+' && *q != '-') return -2;
 				oriw = (*q != '+');
 			} else if (i == 4) {
-				char *r;
-				if (!isdigit(*q)) return -2;
-				ov = strtol(q, &r, 10);
-				if (isupper(*r)) { // CIGAR
-					ov = ow = 0;
-					do {
-						long l;
-						l = strtol(q, &q, 10);
-						if (*q == 'M' || *q == 'D' || *q == 'N') ov += l;
-						if (*q == 'M' || *q == 'I' || *q == 'S') ow += l;
-						++q;
-					} while (isdigit(*q));
-				} else if (*r == ':') { // overlap lengths
-					ow = isdigit(*(r+1))? strtol(r+1, &r, 10) : INT32_MAX;
+				if (*q == ':') {
+					ov = INT32_MAX;
+					ow = isdigit(*(q+1))? strtol(q+1, &q, 10) : INT32_MAX;
+				} else if (isdigit(*q)) {
+					char *r;
+					ov = strtol(q, &r, 10);
+					if (isupper(*r)) { // CIGAR
+						ov = ow = 0;
+						do {
+							long l;
+							l = strtol(q, &q, 10);
+							if (*q == 'M' || *q == 'D' || *q == 'N') ov += l;
+							if (*q == 'M' || *q == 'I' || *q == 'S') ow += l;
+							++q;
+						} while (isdigit(*q));
+					} else if (*r == ':') { // overlap lengths
+						ow = isdigit(*(r+1))? strtol(r+1, &r, 10) : INT32_MAX;
+					} else break;
 				} else break;
 				is_ok = 1, rest = c? p + 1 : 0;
 				break;
@@ -392,19 +396,26 @@ static uint32_t gfa_fix_semi_arc(gfa_t *g)
 		int nv = gfa_arc_n(g, v);
 		gfa_arc_t *av = gfa_arc_a(g, v);
 		for (i = 0; i < nv; ++i) {
-			if (!av[i].del && av[i].ow == INT32_MAX) { // overlap length is missing
+			if (!av[i].del && (av[i].ow == INT32_MAX || av[i].ov == INT32_MAX)) { // overlap length is missing
 				uint32_t w = av[i].w^1;
-				int c, jv = -1, nw = gfa_arc_n(g, w);
+				int is_multi = 0, c, jv = -1, nw = gfa_arc_n(g, w);
 				gfa_arc_t *aw = gfa_arc_a(g, w);
 				for (j = 0, c = 0; j < nw; ++j)
 					if (!aw[j].del && aw[j].w == (v^1)) ++c, jv = j;
-				if (c != 1 || (aw[jv].ow != INT32_MAX && aw[jv].ow != av[i].ov)) { // no complement edge or multiple edges
+				if (c == 1) {
+					if (av[i].ov != INT32_MAX && aw[jv].ow != INT32_MAX && av[i].ov != aw[jv].ow) is_multi = 1;
+					if (av[i].ow != INT32_MAX && aw[jv].ov != INT32_MAX && av[i].ow != aw[jv].ov) is_multi = 1;
+				}
+				if (c == 1 && !is_multi) {
+					if (aw[jv].ov != INT32_MAX) av[i].ow = aw[jv].ov;
+					if (aw[jv].ow != INT32_MAX) av[i].ov = aw[jv].ow;
+				} else {
 					if (gfa_verbose >= 2)
-						fprintf(stderr, "[W] can't infer complement overlap length for %s%c -> %s%c\n",
-								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[(w^1)&1]);
+						fprintf(stderr, "[W] can't infer overlap length for %s%c -> %s%c (%d,%d)\n",
+								g->seg[v>>1].name, "+-"[v&1], g->seg[w>>1].name, "+-"[(w^1)&1], c, is_multi);
 					++n_err;
 					av[i].del = 1;
-				} else av[i].ow = aw[jv].ov;
+				}
 			}
 		}
 	}
