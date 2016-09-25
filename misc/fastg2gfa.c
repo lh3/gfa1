@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "")) >= 0);
 
 	if (optind == argc) {
-		fprintf(stderr, "Usage: fastg2gfa [options] <in.fastg>\n");
+		fprintf(stderr, "Usage: fastg2gfa <in.fastg>\n");
 		return 1;
 	}
 
