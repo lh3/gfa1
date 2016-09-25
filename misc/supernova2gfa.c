@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 		t->pid = a.a[i].k[0]<<1|0, t->vid = a.a[i].id;
 		kv_pushp(sn_pair_t, s, &t);
 		t->pid = a.a[i].k[1]<<1|1, t->vid = a.a[i].id;
-		printf("S\t%ld\t%s\tLN:i:%ld\n", (long)a.a[i].id, a.a[i].seq, (long)strlen(a.a[i].seq));
+		printf("S\t%ld\t%s\tLN:i:%ld\te5:i:%ld\te3:i:%ld\n", (long)a.a[i].id, a.a[i].seq, (long)strlen(a.a[i].seq), (long)a.a[i].k[0], (long)a.a[i].k[1]);
 		free(a.a[i].seq);
 	}
 	free(a.a);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 			n0 = j - st, n1 = (i - st) - n0;
 			for (j = st + n0; j < i; ++j)
 				for (k = st; k < st + n0; ++k)
-					printf("L\t%ld\t+\t%ld\t+\t0M\tei:i:%ld\n", (long)s.a[j].vid, (long)s.a[k].vid, (long)s.a[st].pid>>1);
+					printf("L\t%ld\t+\t%ld\t+\t0M\tee:i:%ld\n", (long)s.a[j].vid, (long)s.a[k].vid, (long)s.a[st].pid>>1);
 			st = i;
 		}
 	}
