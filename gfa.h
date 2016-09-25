@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r37"
+#define GFA_VERSION "r39"
 
 /*
   A segment is a sequence. A vertex is one side of a segment. In the code,
@@ -74,7 +74,7 @@ extern "C" {
 
 gfa_t *gfa_read(const char *fn);
 void gfa_destroy(gfa_t *g);
-void gfa_print(const gfa_t *g, FILE *fp);
+void gfa_print(const gfa_t *g, FILE *fp, int M_only);
 
 void gfa_symm(gfa_t *g); // delete multiple edges and restore skew-symmetry
 void gfa_cleanup(gfa_t *g); // permanently delete arcs marked as deleted, sort and then index

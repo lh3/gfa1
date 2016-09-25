@@ -493,7 +493,7 @@ gfa_t *gfa_read(const char *fn)
 	return g;
 }
 
-void gfa_print(const gfa_t *g, FILE *fp)
+void gfa_print(const gfa_t *g, FILE *fp, int M_only)
 {
 	uint32_t i;
 	uint64_t k;
@@ -519,8 +519,12 @@ void gfa_print(const gfa_t *g, FILE *fp)
 		const gfa_aux_t *aux = &g->arc_aux[a->link_id];
 		if (a->del || a->comp) continue;
 		fprintf(fp, "L\t%s\t%c\t%s\t%c", g->seg[a->v_lv>>33].name, "+-"[a->v_lv>>32&1], g->seg[a->w>>1].name, "+-"[a->w&1]);
-		if (a->ov == a->ow) fprintf(fp, "\t%dM", a->ov);
-		else fprintf(fp, "\t%d:%d", a->ov, a->ow);
+		if (M_only) {
+			fprintf(fp, "\t%dM", a->ov < a->ow? a->ov : a->ow);
+		} else {
+			if (a->ov == a->ow) fprintf(fp, "\t%dM", a->ov);
+			else fprintf(fp, "\t%d:%d", a->ov, a->ow);
+		}
 		if (aux->aux == 0 || !gfa_aux_get(aux->l_aux, aux->aux, "L1"))
 			fprintf(fp, "\tL1:i:%d", gfa_arc_len(*a));
 		if (aux->aux == 0 || !gfa_aux_get(aux->l_aux, aux->aux, "L2"))

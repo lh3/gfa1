@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	memset(&fc, 0, sizeof(falcon_t));
 	fc.h = kh_init(str);
 
-	while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) {
+	while (ks_getuntil(ks, KS_SEP_LINE, &str, &dret) >= 0) { // read all lines
 		char *q = str.s, *p, *s[2], *type = 0;
 		int i, o[2], x[3], is_err = 0;
 		float identity = -1.;
@@ -99,23 +99,27 @@ int main(int argc, char *argv[])
 		t->x[0] = x[0], t->x[1] = x[1], t->x[2] = x[2];
 	}
 
-	for (i = 0; i < fc.lines.n; ++i) {
+	for (i = 0; i < fc.lines.n; ++i) { // find segment lengths (may be shorter for tips)
 		fcline_t *t = &fc.lines.a[i];
 		int len = t->x[0] < t->x[1]? t->x[1] : t->x[0] + t->x[2];
 		if (fc.segs.a[t->w>>1].len < len)
 			fc.segs.a[t->w>>1].len = len;
 	}
-	for (i = 0; i < fc.segs.n; ++i) {
+	for (i = 0; i < fc.segs.n; ++i) { // print S-lines
 		fcseg_t *t = &fc.segs.a[i];
 		printf("S\t%s\t*\tLN:i:%d\n", t->name, t->len);
 	}
-	for (i = 0; i < fc.lines.n; ++i) {
+	for (i = 0; i < fc.lines.n; ++i) { // print L-lines
 		fcline_t *t = &fc.lines.a[i];
 		printf("L\t%s\t%c\t%s\t%c", fc.segs.a[t->v>>1].name, "+-"[t->v&1], fc.segs.a[t->w>>1].name, "+-"[t->w&1]);
 		if (t->x[0] < t->x[1]) printf("\t:%d\n", t->x[0]);
 		else printf("\t:%d\n", fc.segs.a[t->w>>1].len - t->x[0]);
 	}
+	for (i = 0; i < fc.segs.n; ++i)
+		free(fc.segs.a[i].name);
 
+	free(fc.segs.a);
+	free(fc.lines.a);
 	kh_destroy(str, fc.h);
 	ks_destroy(ks);
 	gzclose(fp);

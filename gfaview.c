@@ -5,12 +5,12 @@
 #include <ctype.h>
 #include "gfa.h"
 
-const char *tr_opts = "v:r:t:b:o:RTBOM";
+const char *tr_opts = "v:r:t:b:o:RTBOM1";
 
 int main(int argc, char *argv[])
 {
 	int c;
-	int gap_fuzz = 1000, max_ext = 4, bub_dist = 50000;
+	int gap_fuzz = 1000, max_ext = 4, bub_dist = 50000, M_only = 0;
 	float ovlp_drop_ratio = .7f;
 	gfa_t *g;
 
@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "  -O          drop shorter overlaps\n");
 		fprintf(stderr, "  -o FLOAT    dropped/longest<FLOAT, for -O [%g]\n", ovlp_drop_ratio);
 		fprintf(stderr, "  -M          misc trimming\n");
+		fprintf(stderr, "  -1          only output CIGAR-M operators\n");
 		return 1;
 	}
 
@@ -41,6 +42,7 @@ int main(int argc, char *argv[])
 	optind = 1;
 	while ((c = getopt(argc, argv, tr_opts)) >= 0) {
 		if (c == 'v') gfa_verbose = atoi(optarg);
+		else if (c == '1') M_only = 1;
 		else if (c == 'r') gap_fuzz = atoi(optarg);
 		else if (c == 'R') gfa_arc_del_trans(g, gap_fuzz);
 		else if (c == 't') max_ext = atoi(optarg);
@@ -61,6 +63,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	gfa_print(g, stdout);
+	gfa_print(g, stdout, M_only);
 	return 0;
 }
