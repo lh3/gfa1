@@ -482,7 +482,8 @@ function main(args)
 		print("Commands:");
 		print("  gfa2dot       convert GFA to graphviz's DOT");
 		print("  velvet2gfa    convert Velvet's LastGraph to GFA");
-		print("  spades2gfa    convert SPAdes's FASTG (version <=3.1.1) to GFA");
+		print("");
+		print("  spades2gfa    convert SPAdes's FASTG (version <=3.1.1 ONLY) to GFA");
 		print("  sga2gfa       convert SGA's ASQG to GFA");
 		print("  soap2gfa      convert SOAPdenovo graph to GFA");
 		print("  abyss2gfa     convert ABySS' DOT to GFA");

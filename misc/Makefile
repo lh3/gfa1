@@ -2,7 +2,7 @@ CC=			gcc
 CFLAGS=		-g -Wall -Wc++-compat -O2
 CPPFLAGS=
 INCLUDES=	-I..
-PROG=		mag2gfa
+PROG=		fastg2gfa mag2gfa
 LIBS=		-lz
 
 .SUFFIXES:.c .o
@@ -12,6 +12,9 @@ LIBS=		-lz
 		$(CC) -c $(CFLAGS) $(CPPFLAGS) $(INCLUDES) $< -o $@
 
 all:$(PROG)
+
+fastg2gfa:fastg2gfa.o
+		$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
 mag2gfa:mag2gfa.o
 		$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
