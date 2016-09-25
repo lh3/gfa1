@@ -214,10 +214,9 @@ function gfa_velvet2gfa(args)
 		if (c == 'S') no_seq = true;
 
 	if (args.length == getopt.ind) {
-		print("");
-		print("Usage:   k8 gfaconv.js velvet2gfa [options] <LastGraph>\n");
-		print("Options: -S      don't show sequences");
-		print("");
+		print("Usage: k8 gfaconv.js velvet2gfa [options] <LastGraph>");
+		print("Options:");
+		print("  -S      don't show sequences");
 		exit(1);
 	}
 
