@@ -136,14 +136,13 @@ function gfa_gfa2dot(args)
 	}
 
 	if (getopt.ind == args.length) {
-		print("");
-		print("Usage:   k8 gfaconv.js gfa2dot [options] <in.gfa>\n");
-		print("Options: -b       the input contains links from both directions");
-		print("         -E       don't show the ends of segments (more compact layout)");
-		print("         -u       undirected dot output");
-		print("         -L       don't display label");
-		print("         -S       apply -uLE");
-		print("");
+		print("Usage: k8 gfaconv.js gfa2dot [options] <in.gfa>");
+		print("Options:");
+		print("  -b       the input contains links from both directions");
+		print("  -E       don't show the ends of segments (more compact layout)");
+		print("  -u       undirected dot output");
+		print("  -L       don't display label");
+		print("  -S       apply -uLE");
 		exit(1);
 	}
 
@@ -264,11 +263,10 @@ function gfa_spades2gfa(args)
 		else if (c == 'S') no_seq = true;
 
 	if (args.length == getopt.ind) {
-		print("");
-		print("Usage:   k8 gfaconv.js spades2gfa [options] <spades.fastg>\n");
-		print("Options: -O      keep the original node names");
-		print("         -S      don't show sequences");
-		print("");
+		print("Usage: k8 gfaconv.js spades2gfa [options] <spades.fastg>");
+		print("Options:");
+		print("  -O      keep the original node names");
+		print("  -S      don't show sequences");
 		exit(1);
 	}
 
@@ -331,11 +329,11 @@ function gfa_soap2gfa(args)
 		else if (c == 'T') keep_twin = true;
 
 	if (args.length == getopt.ind) {
-		print("");
-		print("Usage:   k8 gfaconv.js soap2gfa [options] <soapdenovo.prefix>\n");
-		print("Options: -S      don't show sequences");
-		print("         -T      preserve twin edges");
-		print("");
+		print("Usage: k8 gfaconv.js soap2gfa [options] <soapdenovo.prefix>");
+		print("Options:");
+		print("  -S      don't show sequences");
+		print("  -T      preserve twin edges");
+		print("Notes: Requiring prefix.preGraphBasic, prefix.contig and prefix.Arc");
 		exit(1);
 	}
 
@@ -385,10 +383,9 @@ function gfa_sga2gfa(args)
 		if (c == 'S') no_seq = true;
 
 	if (args.length == getopt.ind) {
-		print("");
-		print("Usage:   k8 gfaconv.js sga2gfa [options] <sga.asqg>\n");
-		print("Options: -S      don't show sequences");
-		print("");
+		print("Usage: k8 gfaconv.js sga2gfa [options] <sga.asqg>");
+		print("Options:");
+		print("  -S      don't show sequences");
 		exit(1);
 	}
 
@@ -432,11 +429,10 @@ function gfa_abyss2gfa(args)
 		else if (c == 'T') keep_twin = true;
 
 	if (args.length == getopt.ind) {
-		print("");
-		print("Usage:   k8 gfaconv.js abyss2gfa [options] <abyss.prefix>\n");
-		print("Options: -S      don't show sequences");
-		print("         -T      preserve twin edges");
-		print("");
+		print("Usage: k8 gfaconv.js abyss2gfa [options] <abyss.prefix>");
+		print("Options:");
+		print("  -S      don't show sequences");
+		print("  -T      preserve twin edges");
 		exit(1);
 	}
 
@@ -482,11 +478,10 @@ function main(args)
 		print("Commands:");
 		print("  gfa2dot       convert GFA to graphviz's DOT");
 		print("  velvet2gfa    convert Velvet's LastGraph to GFA");
-		print("");
-		print("  spades2gfa    convert SPAdes's FASTG (version <=3.1.1 ONLY) to GFA");
-		print("  sga2gfa       convert SGA's ASQG to GFA");
 		print("  soap2gfa      convert SOAPdenovo graph to GFA");
+		print("  sga2gfa       convert SGA's ASQG to GFA");
 		print("  abyss2gfa     convert ABySS' DOT to GFA");
+		print("  spades2gfa    convert SPAdes's FASTG (version <=3.1.1 ONLY) to GFA");
 		exit(1);
 	}
 
