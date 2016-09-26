@@ -46,16 +46,17 @@ unsigned fc_add_seg(falcon_t *fc, const char *s)
 
 int main(int argc, char *argv[])
 {
-	int c, dret, i;
+	int c, dret, i, no_S = 0;
 	gzFile fp;
 	kstream_t *ks;
 	kstring_t str = {0,0,0};
 	falcon_t fc;
 
-	while ((c = getopt(argc, argv, "")) >= 0);
+	while ((c = getopt(argc, argv, "S")) >= 0)
+		if (c == 'S') no_S = 1;
 
 	if (optind == argc) {
-		fprintf(stderr, "Usage: falcon2gfa [options] <sg_edges_list>\n");
+		fprintf(stderr, "Usage: falcon2gfa [-S] <sg_edges_list>\n");
 		return 1;
 	}
 
@@ -105,15 +106,18 @@ int main(int argc, char *argv[])
 		if (fc.segs.a[t->w>>1].len < len)
 			fc.segs.a[t->w>>1].len = len;
 	}
-	for (i = 0; i < fc.segs.n; ++i) { // print S-lines
-		fcseg_t *t = &fc.segs.a[i];
-		printf("S\t%s\t*\tLN:i:%d\n", t->name, t->len);
+	if (!no_S) {
+		for (i = 0; i < fc.segs.n; ++i) { // print S-lines
+			fcseg_t *t = &fc.segs.a[i];
+			printf("S\t%s\t*\tLN:i:%d\n", t->name, t->len);
+		}
 	}
 	for (i = 0; i < fc.lines.n; ++i) { // print L-lines
 		fcline_t *t = &fc.lines.a[i];
-		printf("L\t%s\t%c\t%s\t%c", fc.segs.a[t->v>>1].name, "+-"[t->v&1], fc.segs.a[t->w>>1].name, "+-"[t->w&1]);
-		if (t->x[0] < t->x[1]) printf("\t:%d\n", t->x[0]);
-		else printf("\t:%d\n", fc.segs.a[t->w>>1].len - t->x[0]);
+		int o2 = t->x[0] < t->x[1]? t->x[0] : fc.segs.a[t->w>>1].len - t->x[0];
+		printf("L\t%s\t%c\t%s\t%c\t:%d", fc.segs.a[t->v>>1].name, "+-"[t->v&1], fc.segs.a[t->w>>1].name, "+-"[t->w&1], o2);
+		if (no_S) printf("\tL2:i:%d", fc.segs.a[t->w>>1].len - o2);
+		putchar('\n');
 	}
 	for (i = 0; i < fc.segs.n; ++i)
 		free(fc.segs.a[i].name);
