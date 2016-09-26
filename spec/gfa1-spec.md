@@ -21,17 +21,17 @@ the arrow indicating its orientation:
 
 ![image](https://cloud.githubusercontent.com/assets/480346/18406447/0c612dd6-76cb-11e6-83e5-a7ffdb2d33c0.png)
 
-Assuming each sequence is 200bp in length and each overlap is 20bp in length,
+Assuming each sequence is 200bp in length and each overlap is an exact match,
 we can encode this graph in the GFA format as:
 ```
-S  A  200  *
-S  B  200  *
-S  C  200  *
-S  D  200  *
-L  A  +  B  +  20  20
-L  A  +  C  -  20  20
-L  B  +  D  +  20  20
-L  C  -  D  +  20  20
+S  A  *	LN:i:200
+S  B  *	LN:i:200
+S  C  *	LN:i:200
+S  D  *	LN:i:200
+L  A  +  B  +  40M
+L  A  +  C  -  20M
+L  B  +  D  +  20M
+L  C  -  D  +  40M
 ```
 where each S-line, or *segment* line, gives the property of a sequence,
 including its length and actual nucleotide sequence; each L-line, or *link*
@@ -60,10 +60,6 @@ are equivalent:
   overlap*, see documentations [from GRC][grcdef] or [from
   wgs-assembler][caovlp].
 
-* **Gap**: an unknown sequence connecting the ends of two oriented segments.
-
-* **Match**: a local alignment between two oriented segments.
-
 Mathematically, GFA models a [skew-symmetric graph][ssg], where each vertex is
 an oriented segment (in the overlap graph view) or the 5'- or 3'-end of a
 segment (in the string graph view), and each directed edge is a link in GFA.
@@ -75,36 +71,35 @@ line, the leading letter indicates the data type and defines the mandatory
 fields on that line. The following table gives an overview of different line
 types in GFA:
 
-|Line|Type    |col1|col2|col3|col4|col5 |col6 |col7|
-|:--:|:-------|:---|:---|:---|:---|:----|:----|:---|
-|`H` |Header  ||||||||
-|`S` |Segment |sid |slen|seq |||||
-|`L` |Link    |sid1|ori1|sid2|ori2|olen1|olen2||
-|`G` |Gap     |sid1|ori1|sid2|ori2|dist |||
-|`M` |Match   |sid1|ori |sid2|beg1|end1 |beg2 |end2|
-
-In the table, *sid*\* are strings, *slen*, *olen*\*, and *dist* are 32-bit
-non-negative integers, and *ori*\* take values of `+` or `-`; *beg*\* may be an
-integer or `^` for the start of a segment; *end*\* may be an integer or `$` for
-the end of a segment.
+|Line|Type       |col1|col2|col3|col4|col5   |
+|:--:|:----------|:---|:---|:---|:---|:------|
+|`H` |Header     ||||||||
+|`S` |Segment    |sid |seq ||||||
+|`L` |Link       |sid1|ori1|sid2|ori2|overlap|
+|`C` |Containment|sid1|sid2|ori |CIGAR||
+|`#` |Comment    ||||||||
 
 ### <a name="sline"></a> Segment line
 
 A segment line or S-line takes the following format:
 ```
-S	<sid>	<slen>	<seq>
+S	<sid>	<seq>
 ```
-where *sid* is the segment name, *slen* is the length of the segment and *seq*
-is the sequence which can be `*` if not available.
+where *sid* is the segment name and *seq* is the sequence which can be `*` if
+not available.
 
 ### <a name="lline"></a> Link line
 
 A link line or L-line is
 ```
-L	<sid1>	<ori1>	<sid2>	<ori2>	<olen1>	<olen2>
+L	<sid1>	<ori1>	<sid2>	<ori2>	<overlap>
 ```
 where *sid1*/*sid2* are the names of segments involved in the link,
-*ori1*/*ori2* are orientations (either `+` or `-`), and *olen1*/*olen2* are the
+*ori1*/*ori2* are orientations (either `+` or `-`), and *overlap* may be a
+CIGAR `/^([0-9]+S)?([0-9]+[MID])([0-9]+N)?$/`.
+
+
+*olen1*/*olen2* are the
 lengths in the overlap as is shown in the following (o1 and o2 in the figure
 correspond to *olen1* and *olen2*, respectively):
 
