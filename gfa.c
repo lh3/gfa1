@@ -145,6 +145,16 @@ uint8_t *gfa_aux_get(int l_data, const uint8_t *data, const char tag[2])
 	return 0;
 }
 
+// s MUST BE returned by gfa_aux_get()
+int gfa_aux_del(int l_data, uint8_t *data, uint8_t *s)
+{
+	uint8_t *p;
+	p = s - 2;
+	__skip_tag(s);
+	memmove(p, s, l_data - (s - data));
+	return l_data - (s - p);
+}
+
 /******************
  * Basic routines *
  ******************/
@@ -336,18 +346,23 @@ int gfa_parse_L(gfa_t *g, char *s)
 		l_aux = gfa_aux_parse(rest, &aux, &m_aux); // parse optional tags
 		if (l_aux) {
 			gfa_aux_t *a = &g->arc_aux[link_id];
+			uint8_t *s_L1, *s_L2;
 			a->l_aux = l_aux, a->m_aux = m_aux, a->aux = aux;
-			if (ov != INT32_MAX) {
-				uint8_t *s;
-				s = gfa_aux_get(l_aux, aux, "L1");
-				if (s && s[0] == 'i')
-					g->seg[v>>1].len = g->seg[v>>1].len > ov + *(int32_t*)(s+1)? g->seg[v>>1].len : ov + *(int32_t*)(s+1);
+			s_L1 = gfa_aux_get(a->l_aux, a->aux, "L1");
+			if (s_L1) {
+				if (ov != INT32_MAX && s_L1[0] == 'i')
+					g->seg[v>>1].len = g->seg[v>>1].len > ov + *(int32_t*)(s_L1+1)? g->seg[v>>1].len : ov + *(int32_t*)(s_L1+1);
+				a->l_aux = gfa_aux_del(a->l_aux, a->aux, s_L1);
 			}
-			if (ow != INT32_MAX) {
-				uint8_t *s;
-				s = gfa_aux_get(l_aux, aux, "L2");
-				if (s && s[0] == 'i')
-					g->seg[w>>1].len = g->seg[w>>1].len > ow + *(int32_t*)(s+1)? g->seg[w>>1].len : ow + *(int32_t*)(s+1);
+			s_L2 = gfa_aux_get(a->l_aux, a->aux, "L2");
+			if (s_L2) {
+				if (ow != INT32_MAX && s_L2[0] == 'i')
+					g->seg[w>>1].len = g->seg[w>>1].len > ow + *(int32_t*)(s_L2+1)? g->seg[w>>1].len : ow + *(int32_t*)(s_L2+1);
+				a->l_aux = gfa_aux_del(a->l_aux, a->aux, s_L2);
+			}
+			if (a->l_aux == 0) {
+				free(a->aux);
+				a->aux = 0;
 			}
 		}
 	} else return -1;
@@ -529,15 +544,13 @@ void gfa_print(const gfa_t *g, FILE *fp, int M_only)
 			if (a->ov == a->ow) fprintf(fp, "\t%dM", a->ov);
 			else fprintf(fp, "\t%d:%d", a->ov, a->ow);
 		}
-		if (aux->aux == 0 || !gfa_aux_get(aux->l_aux, aux->aux, "L1"))
-			fprintf(fp, "\tL1:i:%d", gfa_arc_len(*a));
-		if (aux->aux == 0 || !gfa_aux_get(aux->l_aux, aux->aux, "L2"))
-			fprintf(fp, "\tL2:i:%d", a->lw);
-		if (aux->aux) {
+		fprintf(fp, "\tL1:i:%d", gfa_arc_len(*a));
+		fprintf(fp, "\tL2:i:%d", a->lw);
+		if (aux->l_aux) {
 			char *t = 0;
 			int max = 0, len;
 			len = gfa_aux_format(aux->l_aux, aux->aux, &t, &max);
-			fputs(t, fp);
+			if (t) fputs(t, fp);
 			free(t);
 		}
 		fputc('\n', fp);
