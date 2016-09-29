@@ -958,6 +958,7 @@ void gfa_sub(gfa_t *g, int n, char *const* seg, int step)
 	while (stack.n) {
 		uint64_t x = kv_pop(stack);
 		uint32_t v = x>>32, r = (uint32_t)x;
+		if (g->seg[v>>1].del == 0) continue;
 		g->seg[v>>1].del = 0;
 		if (r < step) {
 			uint32_t nv = gfa_arc_n(g, v);
