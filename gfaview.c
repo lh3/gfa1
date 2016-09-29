@@ -9,7 +9,7 @@
 #include "kseq.h"
 KSTREAM_DECLARE(gzFile, gzread)
 
-const char *tr_opts = "v:r:t:b:o:RTBOM1s:S:";
+const char *tr_opts = "v:R:T:B:O:rtbom1s:S:d:";
 
 char **gv_read_list(const char *o, int *n_)
 {
@@ -70,18 +70,19 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "    -v INT      verbose level [%d]\n", gfa_verbose);
 		fprintf(stderr, "    -1          only output CIGAR-M operators\n");
 		fprintf(stderr, "  Subgraph:\n");
-		fprintf(stderr, "    -S EXPR     list of segment names []\n");
-		fprintf(stderr, "    -s INT      include neighbors in a radius [%d]\n", sub_step);
+		fprintf(stderr, "    -s EXPR     list of segment names to extract []\n");
+		fprintf(stderr, "    -S INT      include neighbors in a radius [%d]\n", sub_step);
+//		fprintf(stderr, "    -d EXPR     list of segment names to delete []\n");
 		fprintf(stderr, "  Graph simplification:\n");
-		fprintf(stderr, "    -R          transitive reduction\n");
-		fprintf(stderr, "    -r INT      fuzzy length for -R [%d]\n", gap_fuzz);
-		fprintf(stderr, "    -T          trim tips\n");
-		fprintf(stderr, "    -t INT      tip length for -T [%d]\n", max_ext);
-		fprintf(stderr, "    -B          pop bubbles\n");
-		fprintf(stderr, "    -b INT      max bubble dist for -B [%d]\n", bub_dist);
-		fprintf(stderr, "    -O          drop shorter overlaps\n");
-		fprintf(stderr, "    -o FLOAT    dropped/longest<FLOAT, for -O [%g]\n", ovlp_drop_ratio);
-		fprintf(stderr, "    -M          misc trimming\n");
+		fprintf(stderr, "    -r          transitive reduction\n");
+		fprintf(stderr, "    -R INT      fuzzy length for -R [%d]\n", gap_fuzz);
+		fprintf(stderr, "    -t          trim tips\n");
+		fprintf(stderr, "    -T INT      tip length for -T [%d]\n", max_ext);
+		fprintf(stderr, "    -b          pop bubbles\n");
+		fprintf(stderr, "    -B INT      max bubble dist for -B [%d]\n", bub_dist);
+		fprintf(stderr, "    -o          drop shorter overlaps\n");
+		fprintf(stderr, "    -O FLOAT    dropped/longest<FLOAT, for -O [%g]\n", ovlp_drop_ratio);
+		fprintf(stderr, "    -m          misc trimming\n");
 		return 1;
 	}
 
@@ -95,31 +96,32 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, tr_opts)) >= 0) {
 		if (c == 'v') gfa_verbose = atoi(optarg);
 		else if (c == '1') M_only = 1;
-		else if (c == 'r') gap_fuzz = atoi(optarg);
-		else if (c == 'R') gfa_arc_del_trans(g, gap_fuzz);
-		else if (c == 't') max_ext = atoi(optarg);
-		else if (c == 'T') gfa_cut_tip(g, max_ext);
-		else if (c == 'b') bub_dist = atoi(optarg);
-		else if (c == 'B') gfa_pop_bubble(g, bub_dist);
-		else if (c == 'o') ovlp_drop_ratio = atof(optarg);
-		else if (c == 's') sub_step = atoi(optarg);
-		else if (c == 'O') {
+		else if (c == 'R') gap_fuzz = atoi(optarg);
+		else if (c == 'r') gfa_arc_del_trans(g, gap_fuzz);
+		else if (c == 'T') max_ext = atoi(optarg);
+		else if (c == 't') gfa_cut_tip(g, max_ext);
+		else if (c == 'B') bub_dist = atoi(optarg);
+		else if (c == 'b') gfa_pop_bubble(g, bub_dist);
+		else if (c == 'O') ovlp_drop_ratio = atof(optarg);
+		else if (c == 'S') sub_step = atoi(optarg);
+		else if (c == 'o') {
 			if (gfa_arc_del_short(g, ovlp_drop_ratio) != 0) {
 				gfa_cut_tip(g, max_ext);
 				gfa_pop_bubble(g, bub_dist);
 			}
-		} else if (c == 'M') {
+		} else if (c == 'm') {
 			gfa_cut_internal(g, 1);
 			gfa_cut_biloop(g, max_ext);
 			gfa_cut_tip(g, max_ext);
 			gfa_pop_bubble(g, bub_dist);
-		} else if (c == 'S') {
+		} else if (c == 's') {
 			int i, n;
 			char **s;
 			s = gv_read_list(optarg, &n);
 			gfa_sub(g, n, s, sub_step);
 			for (i = 0; i < n; ++i) free(s[i]);
 			free(s);
+		} else if (c == 'd') {
 		}
 	}
 
