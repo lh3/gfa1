@@ -444,7 +444,11 @@ uint32_t gfa_fix_symm(gfa_t *g)
 					break;
 				}
 			}
-			if (j == nw) gfa_add_arc1(g, avi->w^1, v^1, avi->ow, avi->ov, avi->link_id, 1);
+			if (j == nw) {
+				gfa_arc_t *arc_old = g->arc;
+				gfa_add_arc1(g, avi->w^1, v^1, avi->ow, avi->ov, avi->link_id, 1);
+				if (arc_old != g->arc) av = gfa_arc_a(g, v); // g->arc may be reallocated
+			}
 		}
 	}
 	if (n_vtx < gfa_n_vtx(g)) {

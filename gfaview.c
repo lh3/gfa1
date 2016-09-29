@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "  Subgraph:\n");
 		fprintf(stderr, "    -s EXPR     list of segment names to extract []\n");
 		fprintf(stderr, "    -S INT      include neighbors in a radius [%d]\n", sub_step);
-//		fprintf(stderr, "    -d EXPR     list of segment names to delete []\n");
+		fprintf(stderr, "    -d EXPR     list of segment names to delete []\n");
 		fprintf(stderr, "  Graph simplification:\n");
 		fprintf(stderr, "    -r          transitive reduction\n");
 		fprintf(stderr, "    -R INT      fuzzy length for -R [%d]\n", gap_fuzz);
@@ -122,9 +122,20 @@ int main(int argc, char *argv[])
 			for (i = 0; i < n; ++i) free(s[i]);
 			free(s);
 		} else if (c == 'd') {
+			int i, n;
+			char **s;
+			s = gv_read_list(optarg, &n);
+			for (i = 0; i < n; ++i) {
+				int32_t seg;
+				seg = gfa_name2id(g, s[i]);
+				if (seg >= 0) gfa_seg_del(g, seg);
+				free(s[i]);
+			}
+			free(s);
 		}
 	}
 
 	gfa_print(g, stdout, M_only);
+	gfa_destroy(g);
 	return 0;
 }
