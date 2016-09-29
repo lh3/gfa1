@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r39"
+#define GFA_VERSION "r44"
 
 /*
   A segment is a sequence. A vertex is one side of a segment. In the code,
@@ -86,6 +86,8 @@ int gfa_cut_biloop(gfa_t *g, int max_ext); // Hmm... I forgot... Some type of we
 int gfa_pop_bubble(gfa_t *g, int max_dist); // bubble popping
 
 uint8_t *gfa_aux_get(int l_data, const uint8_t *data, const char tag[2]);
+
+void gfa_sub(gfa_t *g, int n, char *const* seg, int step);
 
 #ifdef __cplusplus
 }
