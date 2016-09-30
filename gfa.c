@@ -169,13 +169,18 @@ gfa_t *gfa_init(void)
 
 void gfa_destroy(gfa_t *g)
 {
-	uint32_t i;
+	uint32_t i, j;
 	uint64_t k;
 	if (g == 0) return;
 	kh_destroy(seg, (seghash_t*)g->h_names);
 	for (i = 0; i < g->n_seg; ++i) {
-		free(g->seg[i].name);
-		free(g->seg[i].aux.aux);
+		gfa_seg_t *s = &g->seg[i];
+		free(s->name);
+		free(s->aux.aux);
+		for (j = 0; j < s->utg.n; ++j)
+			free(s->utg.name[j]);
+		free(s->utg.name);
+		free(s->utg.a);
 	}
 	for (k = 0; k < g->n_arc; ++k)
 		free(g->arc_aux[k].aux);
@@ -532,6 +537,14 @@ void gfa_print(const gfa_t *g, FILE *fp, int M_only)
 			free(t);
 		}
 		fputc('\n', fp);
+		if (s->utg.n) {
+			uint32_t j, l;
+			for (j = l = 0; j < s->utg.n; ++j) {
+				const gfa_utg_t *u = &s->utg;
+				fprintf(fp, "a\t%s\t%d\t%s\t%c\t%d\n", s->name, l, u->name[j], "+-"[u->a[j]>>32&1], (uint32_t)u->a[j]);
+				l += (uint32_t)u->a[j];
+			}
+		}
 	}
 	for (k = 0; k < g->n_arc; ++k) {
 		const gfa_arc_t *a = &g->arc[k];
@@ -1061,8 +1074,11 @@ add_unitig:
 		u->utg.m = u->utg.n;
 		kv_roundup32(u->utg.m);
 		u->utg.a = (uint64_t*)malloc(8 * u->utg.m);
-		for (i = 0; i < kdq_size(q); ++i)
+		u->utg.name = (char**)malloc(sizeof(char*) * u->utg.m);
+		for (i = 0; i < kdq_size(q); ++i) {
 			u->utg.a[i] = kdq_at(q, i);
+			u->utg.name[i] = strdup(g->seg[u->utg.a[i]>>33].name);
+		}
 	}
 	kdq_destroy(uint64_t, q);
 
