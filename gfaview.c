@@ -9,7 +9,7 @@
 #include "kseq.h"
 KSTREAM_DECLARE(gzFile, gzread)
 
-const char *tr_opts = "v:R:T:B:O:rtbom1s:S:d:";
+const char *tr_opts = "v:R:T:B:O:rtbom1s:S:d:u";
 
 char **gv_read_list(const char *o, int *n_)
 {
@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "  General:\n");
 		fprintf(stderr, "    -v INT      verbose level [%d]\n", gfa_verbose);
 		fprintf(stderr, "    -1          only output CIGAR-M operators\n");
+		fprintf(stderr, "    -u          generate unitig graph\n");
 		fprintf(stderr, "  Subgraph:\n");
 		fprintf(stderr, "    -s EXPR     list of segment names to extract []\n");
 		fprintf(stderr, "    -S INT      include neighbors in a radius [%d]\n", sub_step);
@@ -132,6 +133,11 @@ int main(int argc, char *argv[])
 				free(s[i]);
 			}
 			free(s);
+		} else if (c == 'u') {
+			gfa_t *ug;
+			ug = gfa_ug_gen(g);
+			gfa_destroy(g);
+			g = ug;
 		}
 	}
 

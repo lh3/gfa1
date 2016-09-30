@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r48"
+#define GFA_VERSION "r49"
 
 /*
   A segment is a sequence. A vertex is one side of a segment. In the code,
@@ -47,9 +47,17 @@ typedef struct {
 } gfa_aux_t;
 
 typedef struct {
-	uint32_t len:31, del:1;
+	uint32_t start, end; // start: starting vertex in the string graph; end: ending vertex
+	uint32_t m, n; // number of reads
+	uint64_t *a; // list of reads
+} gfa_utg_t;
+
+typedef struct {
+	int32_t len;
+	uint32_t del:16, circ:16;
 	char *name, *seq;
 	gfa_aux_t aux;
+	gfa_utg_t utg;
 } gfa_seg_t;
 
 #define gfa_n_vtx(g) ((g)->n_seg << 1)
@@ -72,8 +80,12 @@ extern int gfa_verbose;
 extern "C" {
 #endif
 
-gfa_t *gfa_read(const char *fn);
+gfa_t *gfa_init(void);
+int32_t gfa_add_seg(gfa_t *g, const char *name);
 void gfa_destroy(gfa_t *g);
+
+gfa_t *gfa_read(const char *fn);
+
 void gfa_print(const gfa_t *g, FILE *fp, int M_only);
 
 void gfa_symm(gfa_t *g); // delete multiple edges and restore skew-symmetry
@@ -84,6 +96,7 @@ int gfa_cut_tip(gfa_t *g, int max_ext); // cut tips
 int gfa_cut_internal(gfa_t *g, int max_ext); // drop internal segments
 int gfa_cut_biloop(gfa_t *g, int max_ext); // Hmm... I forgot... Some type of weird local topology
 int gfa_pop_bubble(gfa_t *g, int max_dist); // bubble popping
+gfa_t *gfa_ug_gen(const gfa_t *g);
 
 uint8_t *gfa_aux_get(int l_data, const uint8_t *data, const char tag[2]);
 

@@ -183,7 +183,7 @@ void gfa_destroy(gfa_t *g)
 	free(g);
 }
 
-uint32_t gfa_add_seg(gfa_t *g, const char *name)
+int32_t gfa_add_seg(gfa_t *g, const char *name)
 {
 	khint_t k;
 	int absent;
@@ -987,4 +987,103 @@ void gfa_sub(gfa_t *g, int n, char *const* seg, int step)
 	}
 	free(stack.a);
 	gfa_arc_rm(g);
+}
+
+/****************
+ * Unitig graph *
+ ****************/
+
+#include "kdq.h"
+KDQ_INIT(uint64_t)
+
+#define arc_cnt(g, v) ((uint32_t)(g)->idx[(v)])
+#define arc_first(g, v) ((g)->arc[(g)->idx[(v)]>>32])
+
+gfa_t *gfa_ug_gen(const gfa_t *g)
+{
+	int32_t *mark;
+	uint32_t i, v, n_vtx = gfa_n_vtx(g);
+	kdq_t(uint64_t) *q;
+	gfa_t *ug;
+
+	ug = gfa_init();
+	mark = (int32_t*)calloc(n_vtx, 4);
+
+	q = kdq_init(uint64_t);
+	for (v = 0; v < n_vtx; ++v) {
+		uint32_t w, x, l, start, end, len, tmp;
+		char utg_name[11];
+		gfa_seg_t *u;
+
+		if (g->seg[v>>1].del || arc_cnt(g, v) == 0 || mark[v]) continue;
+		mark[v] = 1;
+		q->count = 0, start = v, end = v^1, len = 0;
+		// forward
+		w = v;
+		while (1) {
+			if (arc_cnt(g, w) != 1) break;
+			x = arc_first(g, w).w; // w->x
+			if (arc_cnt(g, x^1) != 1) break;
+			mark[x] = mark[w^1] = 1;
+			l = gfa_arc_len(arc_first(g, w));
+			kdq_push(uint64_t, q, (uint64_t)w<<32 | l);
+			end = x^1, len += l;
+			w = x;
+			if (x == v) break;
+		}
+		if (start != (end^1) || kdq_size(q) == 0) { // linear unitig
+			l = g->seg[end>>1].len;
+			kdq_push(uint64_t, q, (uint64_t)(end^1)<<32 | l);
+			len += l;
+		} else { // circular unitig
+			start = end = UINT32_MAX;
+			goto add_unitig; // then it is not necessary to do the backward
+		}
+		// backward
+		x = v;
+		while (1) { // similar to forward but not the same
+			if (arc_cnt(g, x^1) != 1) break;
+			w = arc_first(g, x^1).w ^ 1; // w->x
+			if (arc_cnt(g, w) != 1) break;
+			mark[x] = mark[w^1] = 1;
+			l = gfa_arc_len(arc_first(g, w));
+			kdq_unshift(uint64_t, q, (uint64_t)w<<32 | l);
+			start = w, len += l;
+			x = w;
+		}
+add_unitig:
+		if (start != UINT32_MAX) mark[start] = mark[end] = 1;
+		sprintf(utg_name, "utg%.7d", ug->n_seg + 1);
+		tmp = gfa_add_seg(ug, utg_name);
+		u = &ug->seg[tmp];
+		u->seq = 0, u->len = len;
+		u->utg.start = start, u->utg.end = end, u->utg.n = kdq_size(q), u->circ = (start == UINT32_MAX);
+		u->utg.m = u->utg.n;
+		kv_roundup32(u->utg.m);
+		u->utg.a = (uint64_t*)malloc(8 * u->utg.m);
+		for (i = 0; i < kdq_size(q); ++i)
+			u->utg.a[i] = kdq_at(q, i);
+	}
+	kdq_destroy(uint64_t, q);
+
+	// add arcs between unitigs; reusing mark for a different purpose
+	for (v = 0; v < n_vtx; ++v) mark[v] = -1;
+	for (i = 0; i < ug->n_seg; ++i) {
+		if (ug->seg[i].circ) continue;
+		mark[ug->seg[i].utg.start] = i<<1 | 0;
+		mark[ug->seg[i].utg.end] = i<<1 | 1;
+	}
+	for (i = 0; i < g->n_arc; ++i) {
+		gfa_arc_t *p = &g->arc[i];
+		if (p->del) continue;
+		if (mark[p->v_lv>>32^1] >= 0 && mark[p->w] >= 0)
+			gfa_add_arc1(ug, mark[p->v_lv>>32^1]^1, mark[p->w], p->ov, INT32_MAX, -1, 0);
+	}
+	free(mark);
+	gfa_arc_sort(ug);
+	gfa_arc_index(ug);
+	gfa_fix_semi_arc(ug);
+	gfa_fix_arc_len(ug);
+	gfa_cleanup(ug);
+	return ug;
 }
