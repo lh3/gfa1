@@ -16,13 +16,16 @@ all:$(PROG)
 gfaview:gfa.o gfaview.o
 		$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
+gfa-chk:gfa-chk.l
+		lex $< && $(CC) -O2 lex.yy.c -o $@
+
 clean:
-		rm -fr gmon.out *.o a.out $(PROG) *~ *.a *.dSYM session*
+		rm -fr gmon.out *.o a.out $(PROG) *~ *.a *.dSYM session* gfa-chk
 
 depend:
 		(LC_ALL=C; export LC_ALL; makedepend -Y -- $(CFLAGS) $(DFLAGS) -- *.c)
 
 # DO NOT DELETE
 
-gfa.o: kstring.h gfa.h kseq.h khash.h ksort.h kvec.h
-gfaview.o: gfa.h
+gfa.o: kstring.h gfa.h kseq.h khash.h ksort.h kvec.h kdq.h
+gfaview.o: gfa.h kseq.h
