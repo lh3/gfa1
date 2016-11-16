@@ -68,22 +68,23 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Options:\n");
 		fprintf(stderr, "  General:\n");
 		fprintf(stderr, "    -v INT      verbose level [%d]\n", gfa_verbose);
-		fprintf(stderr, "    -1          only output CIGAR-M operators\n");
-		fprintf(stderr, "    -u          generate unitig graph\n");
+		fprintf(stderr, "    -1          only output CIGAR-M operators (for compatibility)\n");
+		fprintf(stderr, "    -u          generate unitig graph (unambiguous merge)\n");
 		fprintf(stderr, "  Subgraph:\n");
 		fprintf(stderr, "    -s EXPR     list of segment names to extract []\n");
 		fprintf(stderr, "    -S INT      include neighbors in a radius [%d]\n", sub_step);
 		fprintf(stderr, "    -d EXPR     list of segment names to delete []\n");
 		fprintf(stderr, "  Graph simplification:\n");
 		fprintf(stderr, "    -r          transitive reduction\n");
-		fprintf(stderr, "    -R INT      fuzzy length for -R [%d]\n", gap_fuzz);
+		fprintf(stderr, "    -R INT      fuzzy length for -r [%d]\n", gap_fuzz);
 		fprintf(stderr, "    -t          trim tips\n");
-		fprintf(stderr, "    -T INT      tip length for -T [%d]\n", max_ext);
+		fprintf(stderr, "    -T INT      tip length for -t [%d]\n", max_ext);
 		fprintf(stderr, "    -b          pop bubbles\n");
-		fprintf(stderr, "    -B INT      max bubble dist for -B [%d]\n", bub_dist);
+		fprintf(stderr, "    -B INT      max bubble dist for -b [%d]\n", bub_dist);
 		fprintf(stderr, "    -o          drop shorter overlaps\n");
-		fprintf(stderr, "    -O FLOAT    dropped/longest<FLOAT, for -O [%g]\n", ovlp_drop_ratio);
+		fprintf(stderr, "    -O FLOAT    dropped/longest<FLOAT, for -o [%g]\n", ovlp_drop_ratio);
 		fprintf(stderr, "    -m          misc trimming\n");
+		fprintf(stderr, "Note: the order of options matters; one option may be applied >1 times.\n");
 		return 1;
 	}
 
