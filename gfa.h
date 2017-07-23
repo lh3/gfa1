@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define GFA_VERSION "r52"
+#define GFA_VERSION "r53"
 
 /*
   A segment is a sequence. A vertex is one side of a segment. In the code,
@@ -48,6 +48,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t start, end; // start: starting vertex in the string graph; end: ending vertex
+	uint32_t len2, dummy; // len_r: the other length of the unitig
 	uint32_t m, n; // number of reads
 	uint64_t *a; // list of reads
 	char **name;

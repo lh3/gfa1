@@ -1024,13 +1024,14 @@ gfa_t *gfa_ug_gen(const gfa_t *g)
 
 	q = kdq_init(uint64_t);
 	for (v = 0; v < n_vtx; ++v) {
-		uint32_t w, x, l, start, end, len, tmp;
+		uint32_t w, x, l, start, end, len, tmp, len_r;
 		char utg_name[11];
 		gfa_seg_t *u;
+		gfa_arc_t *a;
 
 		if (g->seg[v>>1].del || arc_cnt(g, v) == 0 || mark[v]) continue;
 		mark[v] = 1;
-		q->count = 0, start = v, end = v^1, len = 0;
+		q->count = 0, start = v, end = v^1, len = len_r = 0;
 		// forward
 		w = v;
 		while (1) {
@@ -1038,9 +1039,10 @@ gfa_t *gfa_ug_gen(const gfa_t *g)
 			x = arc_first(g, w).w; // w->x
 			if (arc_cnt(g, x^1) != 1) break;
 			mark[x] = mark[w^1] = 1;
-			l = gfa_arc_len(arc_first(g, w));
+			a = &arc_first(g, w);
+			l = gfa_arc_len(*a);
 			kdq_push(uint64_t, q, (uint64_t)w<<32 | l);
-			end = x^1, len += l;
+			end = x^1, len += l, len_r += a->lw;
 			w = x;
 			if (x == v) break;
 		}
@@ -1059,11 +1061,13 @@ gfa_t *gfa_ug_gen(const gfa_t *g)
 			w = arc_first(g, x^1).w ^ 1; // w->x
 			if (arc_cnt(g, w) != 1) break;
 			mark[x] = mark[w^1] = 1;
-			l = gfa_arc_len(arc_first(g, w));
+			a = &arc_first(g, w);
+			l = gfa_arc_len(*a);
 			kdq_unshift(uint64_t, q, (uint64_t)w<<32 | l);
-			start = w, len += l;
+			start = w, len += l, len_r += a->lw;
 			x = w;
 		}
+		len_r += g->seg[start>>1].len;
 add_unitig:
 		if (start != UINT32_MAX) mark[start] = mark[end] = 1;
 		sprintf(utg_name, "utg%.7d", ug->n_seg + 1);
@@ -1075,6 +1079,7 @@ add_unitig:
 		kv_roundup32(u->utg.m);
 		u->utg.a = (uint64_t*)malloc(8 * u->utg.m);
 		u->utg.name = (char**)malloc(sizeof(char*) * u->utg.m);
+		u->utg.len2 = len_r;
 		for (i = 0; i < kdq_size(q); ++i) {
 			u->utg.a[i] = kdq_at(q, i);
 			u->utg.name[i] = strdup(g->seg[u->utg.a[i]>>33].name);
@@ -1092,8 +1097,14 @@ add_unitig:
 	for (i = 0; i < g->n_arc; ++i) {
 		gfa_arc_t *p = &g->arc[i];
 		if (p->del) continue;
-		if (mark[p->v_lv>>32^1] >= 0 && mark[p->w] >= 0)
-			gfa_add_arc1(ug, mark[p->v_lv>>32^1]^1, mark[p->w], p->ov, INT32_MAX, -1, 0);
+		if (mark[p->v_lv>>32^1] >= 0 && mark[p->w] >= 0) {
+			gfa_seg_t *s1 = &ug->seg[mark[p->v_lv>>32^1]>>1];
+			gfa_seg_t *s2 = &ug->seg[mark[p->w]>>1];
+			int ov = p->ov;
+			if (ov >= s1->len || ov >= s2->len)
+				ov = (s1->len < s2->len? s1->len : s2->len) - 1;
+			gfa_add_arc1(ug, mark[p->v_lv>>32^1]^1, mark[p->w], ov, INT32_MAX, -1, 0);
+		}
 	}
 	free(mark);
 	gfa_arc_sort(ug);
